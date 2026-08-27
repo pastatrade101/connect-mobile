@@ -118,3 +118,33 @@ Tapping any of them opens that conversation directly.
   Empty means push is inert (by design — Connect never errors over a missing key).
 - **Android builds fail after adding the file** — the package name in
   `google-services.json` must match `tz.co.makutano.makutano_connect` exactly.
+
+---
+
+# Rive artwork (optional)
+
+`RiveArt` plays `assets/rive/<name>.riv` when the file exists and shows a coded
+animation when it does not, so no screen is ever blank waiting for artwork.
+
+Slots the app already looks for:
+
+| file | where it appears |
+|---|---|
+| `assets/rive/splash.riv` | first launch, while the session is restored |
+| `assets/rive/empty_inbox.riv` | the inbox with no conversations |
+| `assets/rive/empty_work.riv` | Work with nothing open |
+| `assets/rive/success.riv` | after something completes |
+
+Drop a `.riv` in with the matching name — no code change, it takes over on the
+next launch.
+
+**One build gotcha, already worked around.** `rive_native` 0.1.11's podspec runs
+its setup from the `Pods` directory, where there is no `pubspec.yaml`, so a clean
+iOS build fails with *"Could not find a file named pubspec.yaml"*. Run this once
+from the project root and the build script finds its marker and skips:
+
+```bash
+dart run rive_native:setup --verbose --platform ios
+```
+
+Anyone cloning this repo will hit the same thing on their first iOS build.

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -190,7 +191,38 @@ class Api {
   }
 
   // ── data ──────────────────────────────────────────────────────────────────
-  Future<Map<String, dynamic>> me() => _get('/me');
+  /// Who am I and what is waiting — and, on the way past, refresh the details we
+  /// cached at sign-in.
+  ///
+  /// A session saved by an older build has whatever fields that build knew about.
+  /// Without this, adding one field to the session means every existing user has
+  /// to sign out and back in before they see it.
+  Future<Map<String, dynamic>> me() async {
+    final data = await _get('/me');
+    final session = _session;
+    final tenant = data['tenant'] as Map<String, dynamic>?;
+    if (session != null && tenant != null) {
+      final currency = (tenant['currency'] ?? '') as String;
+      final name = (tenant['name'] ?? '') as String;
+      if (currency != session.currency || name != session.tenantName) {
+        _session = Session(
+          token: session.token,
+          userName: session.userName,
+          userEmail: session.userEmail,
+          tenantName: name.isEmpty ? session.tenantName : name,
+          currency: currency,
+          workspace: (tenant['workspace'] ?? session.workspace) as String,
+          role: session.role,
+          persona: (data['persona'] ?? session.persona) as String,
+          permissions: ((data['permissions'] ?? session.permissions) as List)
+              .map((e) => e.toString())
+              .toList(),
+        );
+        unawaited(_persist());
+      }
+    }
+    return data;
+  }
 
   Future<Map<String, dynamic>> inbox({String filter = 'all'}) =>
       _get('/inbox', filter == 'all' ? null : {'filter': filter});
