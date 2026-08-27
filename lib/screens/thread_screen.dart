@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -125,7 +127,12 @@ class _ThreadScreenState extends State<ThreadScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
                   if (phone != null)
                     Text('+$phone', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11.5)),
                 ],
@@ -134,31 +141,38 @@ class _ThreadScreenState extends State<ThreadScreen> {
           ],
         ),
         actions: [
-          if (canAssign && !assignedToMe)
-            TextButton(onPressed: _takeChat, child: const Text('Take')),
+          if (canAssign && !assignedToMe) TextButton(onPressed: _takeChat, child: const Text('Take')),
           const SizedBox(width: 4),
         ],
       ),
-      body: Column(
+      // The composer floats over the thread rather than sitting in a bar below it,
+      // so the conversation runs the full height of the screen and blurs beneath it.
+      body: Stack(
         children: [
-          if (assignedToMe)
-            Container(
-              width: double.infinity,
-              color: dark ? Brand.darkSurface : Brand.surface,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(
-                'Assigned to you',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
-              ),
-            ),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _error != null
+          Column(
+            children: [
+              if (assignedToMe)
+                Container(
+                  width: double.infinity,
+                  color: dark ? Brand.darkSurface : Brand.surface,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Text(
+                    'Assigned to you',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              Expanded(
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _error != null
                     ? Center(
                         child: Padding(
                           padding: const EdgeInsets.all(28),
-                          child: Text(_error!, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
+                          child: Text(
+                            _error!,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
                         ),
                       )
                     : RefreshIndicator(
@@ -166,18 +180,26 @@ class _ThreadScreenState extends State<ThreadScreen> {
                         child: ListView.builder(
                           controller: _scroll,
                           physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
+                          // Room for the floating composer, so the last message clears it.
+                          padding: const EdgeInsets.fromLTRB(12, 14, 12, 92),
                           itemCount: _messages.length,
                           itemBuilder: (context, i) => _Bubble(message: _messages[i]),
                         ),
                       ),
+              ),
+            ],
           ),
-          _Composer(
-            controller: _composer,
-            enabled: canSend && !_sending,
-            sending: _sending,
-            onSend: _send,
-            disabledHint: canSend ? null : 'You do not have permission to send messages',
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _Composer(
+              controller: _composer,
+              enabled: canSend && !_sending,
+              sending: _sending,
+              onSend: _send,
+              disabledHint: canSend ? null : 'You do not have permission to send messages',
+            ),
           ),
         ],
       ),
@@ -218,7 +240,11 @@ class _Bubble extends StatelessWidget {
           children: [
             Text(
               (message['text'] ?? '').toString(),
-              style: TextStyle(fontSize: 15, height: 1.35, color: dark ? Brand.darkInk : const Color(0xFF111B21)),
+              style: TextStyle(
+                fontSize: 15,
+                height: 1.35,
+                color: dark ? Brand.darkInk : const Color(0xFF111B21),
+              ),
             ),
             const SizedBox(height: 3),
             Row(
@@ -231,11 +257,15 @@ class _Bubble extends StatelessWidget {
                 if (outbound) ...[
                   const SizedBox(width: 4),
                   Icon(
-                    (message['status'] ?? '') == 'FAILED' ? Icons.error_outline_rounded : Icons.done_all_rounded,
+                    (message['status'] ?? '') == 'FAILED'
+                        ? Icons.error_outline_rounded
+                        : Icons.done_all_rounded,
                     size: 14,
                     color: (message['status'] ?? '') == 'FAILED'
                         ? Brand.danger
-                        : (message['status'] == 'READ' ? const Color(0xFF53BDEB) : (dark ? Brand.darkInkSoft : const Color(0xFF667781))),
+                        : (message['status'] == 'READ'
+                              ? const Color(0xFF53BDEB)
+                              : (dark ? Brand.darkInkSoft : const Color(0xFF667781))),
                   ),
                 ],
               ],
@@ -265,50 +295,86 @@ class _Composer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
+    final glass = dark ? Brand.darkPanel.withValues(alpha: 0.62) : Colors.white.withValues(alpha: 0.72);
+    final edge = dark ? Colors.white.withValues(alpha: 0.10) : Colors.white.withValues(alpha: 0.65);
+
     return SafeArea(
       top: false,
-      child: Container(
-        color: dark ? Brand.darkPanel : Brand.chatBar,
-        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                enabled: enabled,
-                minLines: 1,
-                maxLines: 5,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: InputDecoration(
-                  hintText: disabledHint ?? 'Message',
-                  filled: true,
-                  fillColor: dark ? Brand.darkSurface : Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+        child: DecoratedBox(
+          // The shadow lives outside the clip, or the blur would swallow it.
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: dark ? 0.45 : 0.13),
+                blurRadius: 22,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: BackdropFilter(
+              // Frosted, not opaque: the conversation stays visible underneath.
+              filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: glass,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: edge),
+                ),
+                padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: controller,
+                        enabled: enabled,
+                        minLines: 1,
+                        maxLines: 5,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: InputDecoration(
+                          hintText: disabledHint ?? 'Message',
+                          filled: false,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          disabledBorder: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    SizedBox(
+                      width: 42,
+                      height: 42,
+                      child: FilledButton(
+                        onPressed: enabled ? onSend : null,
+                        style: FilledButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(42, 42),
+                          shape: const CircleBorder(),
+                          backgroundColor: const Color(0xFF00A884),
+                          disabledBackgroundColor: const Color(0xFF00A884).withValues(alpha: 0.35),
+                        ),
+                        child: sending
+                            ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.send_rounded, size: 19, color: Colors.white),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: 46,
-              height: 46,
-              child: FilledButton(
-                onPressed: enabled ? onSend : null,
-                style: FilledButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(46, 46),
-                  shape: const CircleBorder(),
-                  backgroundColor: const Color(0xFF00A884),
-                ),
-                child: sending
-                    ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.send_rounded, size: 20, color: Colors.white),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
