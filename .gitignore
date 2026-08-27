@@ -14,3 +14,8 @@ android/local.properties
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
 lib/firebase_options.dart
+
+# Play upload key — the keystore lives outside the repo, its password never enters it.
+android/key.properties
+*.jks
+*.keystore

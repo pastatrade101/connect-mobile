@@ -1,3 +1,14 @@
+import java.util.Properties
+
+// The upload key for Google Play. Kept out of the repo: `android/key.properties` points
+// at a keystore in the developer's home directory. Without it (a fresh checkout, CI
+// without secrets) the release build falls back to debug signing so it still runs —
+// but such a build can never be uploaded to Play, which rejects debug-signed bundles.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -32,11 +43,25 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("upload") {
+            if (keystoreProperties.containsKey("storeFile")) {
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (keystoreProperties.containsKey("storeFile")) {
+                signingConfigs.getByName("upload")
+            } else {
+                logger.lifecycle("android/key.properties is absent — release build signed with debug keys, NOT uploadable to Play.")
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
