@@ -16,21 +16,44 @@ class WorkScreen extends StatefulWidget {
   State<WorkScreen> createState() => WorkScreenState();
 }
 
-class WorkScreenState extends State<WorkScreen> {
+class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> _items = const [];
-  String? _kind;
   bool _loading = true;
   String? _error;
+
+  /// One tab per kind this business actually runs, led by everything together.
+  /// Built once: a workspace does not change under a signed-in session.
+  late final List<({String? kind, String label})> _tabs;
+  late final TabController _controller;
 
   @override
   void initState() {
     super.initState();
-    _kind = widget.initialKind;
+    final session = Api.instance.session;
+    _tabs = [
+      (kind: null, label: 'All'),
+      if (session != null) ...workKindsFor(session).map((k) => (kind: k.kind, label: k.label)),
+    ];
+    final start = widget.initialKind == null ? 0 : _indexOf(widget.initialKind);
+    _controller = TabController(length: _tabs.length, vsync: this, initialIndex: start);
     load();
   }
 
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  int _indexOf(String? kind) {
+    final i = _tabs.indexWhere((t) => t.kind == kind);
+    return i < 0 ? 0 : i;
+  }
+
+  /// Home sends people here pointed at one kind of work.
   void focusKind(String? kind) {
-    setState(() => _kind = kind);
+    final i = _indexOf(kind);
+    if (i != _controller.index) _controller.animateTo(i);
   }
 
   Future<void> load() async {
@@ -55,8 +78,8 @@ class WorkScreenState extends State<WorkScreen> {
   Widget build(BuildContext context) {
     final session = Api.instance.session;
     if (session == null) return const SizedBox.shrink();
-    final kinds = workKindsFor(session);
-    final visible = _kind == null ? _items : _items.where((i) => i['kind'] == _kind).toList();
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final muted = Theme.of(context).textTheme.bodySmall?.color;
 
     return Column(
       children: [
@@ -64,20 +87,36 @@ class WorkScreenState extends State<WorkScreen> {
           title: 'Work',
           subtitle: _items.isEmpty ? 'Nothing is open right now' : '${_items.length} things in flight',
         ),
-        if (kinds.length > 1)
-          SizedBox(
-            height: 44,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              children: [
-                _KindChip(label: 'All', selected: _kind == null, onTap: () => setState(() => _kind = null)),
-                for (final k in kinds)
-                  _KindChip(
-                    label: k.label,
-                    count: _items.where((i) => i['kind'] == k.kind).length,
-                    selected: _kind == k.kind,
-                    onTap: () => setState(() => _kind = k.kind),
+        if (_tabs.length > 1)
+          Container(
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: dark ? Brand.darkLine : Brand.line)),
+            ),
+            child: TabBar(
+              controller: _controller,
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              labelPadding: const EdgeInsets.symmetric(horizontal: 14),
+              indicatorSize: TabBarIndicatorSize.label,
+              indicatorWeight: 3,
+              indicatorColor: Brand.blue,
+              labelColor: Brand.blue,
+              unselectedLabelColor: muted,
+              dividerHeight: 0,
+              splashBorderRadius: BorderRadius.circular(10),
+              labelStyle: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
+              unselectedLabelStyle: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w500),
+              tabs: [
+                for (final tab in _tabs)
+                  Tab(
+                    height: 46,
+                    child: _TabLabel(
+                      label: tab.label,
+                      count: tab.kind == null
+                          ? _items.length
+                          : _items.where((i) => i['kind'] == tab.kind).length,
+                    ),
                   ),
               ],
             ),
@@ -86,49 +125,65 @@ class WorkScreenState extends State<WorkScreen> {
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _error != null
-                  ? Center(
-                      child: TeachingEmptyState(
-                        icon: Icons.cloud_off_rounded,
-                        title: 'Could not load your work',
-                        body: _error!,
-                        actionLabel: 'Try again',
-                        onAction: load,
-                      ),
-                    )
-                  : visible.isEmpty
-                      ? SingleChildScrollView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          child: TeachingEmptyState(
-                            icon: Icons.check_circle_outline_rounded,
-                            title: 'Nothing open here',
-                            body: howWorkArrives(workspaceOf(session.workspace)),
-                            actionLabel: quickActionsFor(session).firstOrNull?.label,
-                            onAction: quickActionsFor(session).isEmpty
-                                ? null
-                                : () => widget.onCreate(quickActionsFor(session).first.key),
-                          ),
-                        )
-                      : RefreshIndicator(
-                          onRefresh: load,
-                          child: ListView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(0, 8, 0, 28),
-                            children: [
-                              GroupedList(
-                                children: [
-                                  for (final item in visible)
-                                    WorkRow(
-                                      item: item,
-                                      onTap: () => _showDetail(context, item),
-                                      onNext: item['next'] == null ? null : () => _showDetail(context, item),
-                                    ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
+              ? Center(
+                  child: TeachingEmptyState(
+                    icon: Icons.cloud_off_rounded,
+                    title: 'Could not load your work',
+                    body: _error!,
+                    actionLabel: 'Try again',
+                    onAction: load,
+                  ),
+                )
+              // Swiping sideways moves between tabs — the gesture people already
+              // expect from every other tabbed app on the phone.
+              : TabBarView(
+                  controller: _controller,
+                  children: [for (final tab in _tabs) _page(session, tab.kind)],
+                ),
         ),
       ],
+    );
+  }
+
+  Widget _page(Session session, String? kind) {
+    final visible = kind == null ? _items : _items.where((i) => i['kind'] == kind).toList();
+    if (visible.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: load,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            TeachingEmptyState(
+              icon: Icons.check_circle_outline_rounded,
+              title: 'Nothing open here',
+              body: howWorkArrives(workspaceOf(session.workspace)),
+              actionLabel: quickActionsFor(session).firstOrNull?.label,
+              onAction: quickActionsFor(session).isEmpty
+                  ? null
+                  : () => widget.onCreate(quickActionsFor(session).first.key),
+            ),
+          ],
+        ),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: load,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(0, 8, 0, 28),
+        children: [
+          GroupedList(
+            children: [
+              for (final item in visible)
+                WorkRow(
+                  item: item,
+                  onTap: () => _showDetail(context, item),
+                  onNext: item['next'] == null ? null : () => _showDetail(context, item),
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -148,7 +203,10 @@ class WorkScreenState extends State<WorkScreen> {
             children: [
               Row(
                 children: [
-                  Text((item['reference'] ?? '').toString(), style: Theme.of(sheetContext).textTheme.titleMedium),
+                  Text(
+                    (item['reference'] ?? '').toString(),
+                    style: Theme.of(sheetContext).textTheme.titleMedium,
+                  ),
                   const SizedBox(width: 8),
                   if (item['statusLabel'] != null) StatusChip(label: item['statusLabel'].toString()),
                 ],
@@ -165,7 +223,11 @@ class WorkScreenState extends State<WorkScreen> {
                     const SizedBox(width: 6),
                     Text(
                       'Outstanding ${item['currency']} ${item['outstanding']}',
-                      style: const TextStyle(color: Brand.warning, fontWeight: FontWeight.w600, fontSize: 13.5),
+                      style: const TextStyle(
+                        color: Brand.warning,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13.5,
+                      ),
                     ),
                   ],
                 ),
@@ -199,38 +261,39 @@ class WorkScreenState extends State<WorkScreen> {
 /// Amounts arrive as strings; a missing one is simply zero.
 double _amount(dynamic value) => double.tryParse('${value ?? 0}') ?? 0;
 
-class _KindChip extends StatelessWidget {
-  const _KindChip({required this.label, required this.selected, required this.onTap, this.count});
+/// A tab label with how many are behind it. The count is never the loud part.
+class _TabLabel extends StatelessWidget {
+  const _TabLabel({required this.label, required this.count});
   final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  final int? count;
+  final int count;
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            color: selected ? Brand.blue : (dark ? Brand.darkSurface : Brand.surface),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: selected ? Brand.blue : (dark ? Brand.darkLine : Brand.line)),
-          ),
-          child: Text(
-            count == null || count == 0 ? label : '$label $count',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: selected ? Colors.white : Theme.of(context).textTheme.bodySmall?.color,
+    final selected = DefaultTextStyle.of(context).style.color == Brand.blue;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label),
+        if (count > 0) ...[
+          const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+            decoration: BoxDecoration(
+              color: selected ? Brand.blueWash : Theme.of(context).dividerColor.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(7),
+            ),
+            child: Text(
+              '$count',
+              style: TextStyle(
+                fontSize: 11.5,
+                height: 1.3,
+                fontWeight: FontWeight.w700,
+                color: selected ? Brand.blue : Theme.of(context).textTheme.bodySmall?.color,
+              ),
             ),
           ),
-        ),
-      ),
+        ],
+      ],
     );
   }
 }
