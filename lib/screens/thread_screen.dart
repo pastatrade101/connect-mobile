@@ -103,7 +103,7 @@ class _ThreadScreenState extends State<ThreadScreen> {
     final canAssign = Api.instance.session?.can('conversations:assign') ?? false;
 
     return Scaffold(
-      backgroundColor: dark ? Brand.darkGround : Brand.chatGround,
+      backgroundColor: dark ? Brand.darkChatGround : Brand.chatGround,
       appBar: AppBar(
         titleSpacing: 0,
         backgroundColor: dark ? Brand.darkPanel : Brand.chatBar,
@@ -226,7 +226,7 @@ class _Bubble extends StatelessWidget {
         decoration: BoxDecoration(
           color: outbound
               ? (dark ? Brand.darkBubbleOut : Brand.bubbleOut)
-              : (dark ? Brand.darkPanel : Brand.bubbleIn),
+              : (dark ? Brand.darkBubbleIn : Brand.bubbleIn),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(10),
             topRight: const Radius.circular(10),
@@ -262,7 +262,7 @@ class _Bubble extends StatelessWidget {
                         : Icons.done_all_rounded,
                     size: 14,
                     color: (message['status'] ?? '') == 'FAILED'
-                        ? Brand.danger
+                        ? Tone.danger(context)
                         : (message['status'] == 'READ'
                               ? const Color(0xFF53BDEB)
                               : (dark ? Brand.darkInkSoft : const Color(0xFF667781))),

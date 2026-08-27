@@ -100,10 +100,10 @@ class _MoreScreenState extends State<MoreScreen> {
               minVerticalPadding: 14,
               leading: CircleAvatar(
                 radius: 22,
-                backgroundColor: Brand.blueWash,
+                backgroundColor: Tone.blueWash(context),
                 child: Text(
                   initialsOf(session.userName),
-                  style: const TextStyle(color: Brand.blue, fontWeight: FontWeight.w700, fontSize: 15),
+                  style: TextStyle(color: Tone.blue(context), fontWeight: FontWeight.w700, fontSize: 15),
                 ),
               ),
               title: Text(
@@ -112,6 +112,50 @@ class _MoreScreenState extends State<MoreScreen> {
               ),
               subtitle: Text(session.userEmail, style: Theme.of(context).textTheme.bodySmall),
               trailing: StatusChip(label: _roleLabel(session.role)),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 18),
+        const GroupLabel(text: 'Appearance'),
+        GroupedList(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+              child: ValueListenableBuilder<ThemeMode>(
+                valueListenable: AppTheme.mode,
+                builder: (context, mode, _) => SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<ThemeMode>(
+                    segments: const [
+                      ButtonSegment(
+                        value: ThemeMode.system,
+                        label: Text('System'),
+                        icon: Icon(Icons.phone_iphone_rounded, size: 17),
+                      ),
+                      ButtonSegment(
+                        value: ThemeMode.light,
+                        label: Text('Light'),
+                        icon: Icon(Icons.light_mode_rounded, size: 17),
+                      ),
+                      ButtonSegment(
+                        value: ThemeMode.dark,
+                        label: Text('Dark'),
+                        icon: Icon(Icons.dark_mode_rounded, size: 17),
+                      ),
+                    ],
+                    selected: {mode},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (next) => AppTheme.set(next.first),
+                    style: SegmentedButton.styleFrom(
+                      selectedBackgroundColor: Tone.blue(context),
+                      selectedForegroundColor: Colors.white,
+                      side: BorderSide(color: Tone.line(context)),
+                      textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -177,9 +221,9 @@ class _MoreScreenState extends State<MoreScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 14),
           child: OutlinedButton.icon(
             onPressed: _confirmSignOut,
-            icon: const Icon(Icons.logout_rounded, size: 18, color: Brand.danger),
-            label: const Text('Sign out', style: TextStyle(color: Brand.danger)),
-            style: OutlinedButton.styleFrom(side: const BorderSide(color: Brand.danger)),
+            icon: Icon(Icons.logout_rounded, size: 18, color: Tone.danger(context)),
+            label: Text('Sign out', style: TextStyle(color: Tone.danger(context))),
+            style: OutlinedButton.styleFrom(side: BorderSide(color: Tone.danger(context))),
           ),
         ),
       ],

@@ -100,8 +100,8 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
               labelPadding: const EdgeInsets.symmetric(horizontal: 14),
               indicatorSize: TabBarIndicatorSize.label,
               indicatorWeight: 3,
-              indicatorColor: Brand.blue,
-              labelColor: Brand.blue,
+              indicatorColor: Tone.blue(context),
+              labelColor: Tone.blue(context),
               unselectedLabelColor: muted,
               dividerHeight: 0,
               splashBorderRadius: BorderRadius.circular(10),
@@ -219,12 +219,12 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    const Icon(Icons.payments_outlined, size: 16, color: Brand.warning),
+                    Icon(Icons.payments_outlined, size: 16, color: Tone.warning(context)),
                     const SizedBox(width: 6),
                     Text(
                       'Outstanding ${item['currency']} ${item['outstanding']}',
-                      style: const TextStyle(
-                        color: Brand.warning,
+                      style: TextStyle(
+                        color: Tone.warning(context),
                         fontWeight: FontWeight.w600,
                         fontSize: 13.5,
                       ),
@@ -269,7 +269,7 @@ class _TabLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selected = DefaultTextStyle.of(context).style.color == Brand.blue;
+    final selected = DefaultTextStyle.of(context).style.color == Tone.blue(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -279,7 +279,9 @@ class _TabLabel extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
             decoration: BoxDecoration(
-              color: selected ? Brand.blueWash : Theme.of(context).dividerColor.withValues(alpha: 0.35),
+              color: selected
+                  ? Tone.blueWash(context)
+                  : Theme.of(context).dividerColor.withValues(alpha: 0.35),
               borderRadius: BorderRadius.circular(7),
             ),
             child: Text(
@@ -288,7 +290,7 @@ class _TabLabel extends StatelessWidget {
                 fontSize: 11.5,
                 height: 1.3,
                 fontWeight: FontWeight.w700,
-                color: selected ? Brand.blue : Theme.of(context).textTheme.bodySmall?.color,
+                color: selected ? Tone.blue(context) : Theme.of(context).textTheme.bodySmall?.color,
               ),
             ),
           ),

@@ -17,6 +17,7 @@ import 'screens/work_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Api.instance.restore();
+  await AppTheme.restore();
   await Notifications.instance.init();
   runApp(const MakutanoApp());
 }
@@ -65,14 +66,17 @@ class _MakutanoAppState extends State<MakutanoApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Makutano Connect',
-      debugShowCheckedModeBanner: false,
-      navigatorKey: _navigator,
-      theme: buildTheme(brightness: Brightness.light),
-      darkTheme: buildTheme(brightness: Brightness.dark),
-      themeMode: ThemeMode.system,
-      home: Api.instance.signedIn ? const Shell() : LoginScreen(onSignedIn: _afterSignIn),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: AppTheme.mode,
+      builder: (context, mode, _) => MaterialApp(
+        title: 'Makutano Connect',
+        debugShowCheckedModeBanner: false,
+        navigatorKey: _navigator,
+        theme: buildTheme(brightness: Brightness.light),
+        darkTheme: buildTheme(brightness: Brightness.dark),
+        themeMode: mode,
+        home: Api.instance.signedIn ? const Shell() : LoginScreen(onSignedIn: _afterSignIn),
+      ),
     );
   }
 }
@@ -233,7 +237,10 @@ class _ShellState extends State<Shell> {
                       child: Container(
                         width: 50,
                         height: 40,
-                        decoration: BoxDecoration(color: Brand.blue, borderRadius: BorderRadius.circular(12)),
+                        decoration: BoxDecoration(
+                          color: Tone.blue(context),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         child: const Icon(Icons.add_rounded, color: Colors.white, size: 24),
                       ),
                     ),
@@ -286,14 +293,14 @@ class _NavItem extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(selected ? activeIcon : icon, size: 22, color: selected ? Brand.blue : muted),
+            Icon(selected ? activeIcon : icon, size: 22, color: selected ? Tone.blue(context) : muted),
             const SizedBox(height: 3),
             Text(
               label,
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected ? Brand.blue : muted,
+                color: selected ? Tone.blue(context) : muted,
               ),
             ),
           ],

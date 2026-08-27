@@ -47,28 +47,28 @@ class Session {
   bool can(String permission) => permissions.contains(permission);
 
   Map<String, dynamic> toJson() => {
-        'token': token,
-        'userName': userName,
-        'userEmail': userEmail,
-        'tenantName': tenantName,
-        'currency': currency,
-        'workspace': workspace,
-        'role': role,
-        'persona': persona,
-        'permissions': permissions,
-      };
+    'token': token,
+    'userName': userName,
+    'userEmail': userEmail,
+    'tenantName': tenantName,
+    'currency': currency,
+    'workspace': workspace,
+    'role': role,
+    'persona': persona,
+    'permissions': permissions,
+  };
 
   static Session fromJson(Map<String, dynamic> json) => Session(
-        token: json['token'] as String,
-        userName: (json['userName'] ?? '') as String,
-        userEmail: (json['userEmail'] ?? '') as String,
-        tenantName: (json['tenantName'] ?? '') as String,
-        currency: (json['currency'] ?? '') as String,
-        workspace: (json['workspace'] ?? 'HYBRID') as String,
-        role: (json['role'] ?? '') as String,
-        persona: (json['persona'] ?? 'agent') as String,
-        permissions: ((json['permissions'] ?? []) as List).map((e) => e.toString()).toList(),
-      );
+    token: json['token'] as String,
+    userName: (json['userName'] ?? '') as String,
+    userEmail: (json['userEmail'] ?? '') as String,
+    tenantName: (json['tenantName'] ?? '') as String,
+    currency: (json['currency'] ?? '') as String,
+    workspace: (json['workspace'] ?? 'HYBRID') as String,
+    role: (json['role'] ?? '') as String,
+    persona: (json['persona'] ?? 'agent') as String,
+    permissions: ((json['permissions'] ?? []) as List).map((e) => e.toString()).toList(),
+  );
 }
 
 class Api {
@@ -93,9 +93,9 @@ class Api {
       Uri.parse('$_baseUrl/api/mobile/v1$path').replace(queryParameters: query);
 
   Map<String, String> get _headers => {
-        'content-type': 'application/json',
-        if (_session != null) 'authorization': 'Bearer ${_session!.token}',
-      };
+    'content-type': 'application/json',
+    if (_session != null) 'authorization': 'Bearer ${_session!.token}',
+  };
 
   Future<void> restore() async {
     final prefs = await SharedPreferences.getInstance();
@@ -201,8 +201,11 @@ class Api {
 
   Future<Map<String, dynamic>> assignToMe(String id) => _post('/inbox/$id/assign', {});
 
-  Future<Map<String, dynamic>> registerDevice(String token, {String platform = 'android', String? deviceName}) =>
-      _post('/devices', {'token': token, 'platform': platform, 'deviceName': deviceName});
+  Future<Map<String, dynamic>> registerDevice(
+    String token, {
+    String platform = 'android',
+    String? deviceName,
+  }) => _post('/devices', {'token': token, 'platform': platform, 'deviceName': deviceName});
 
   /// Lifecycle objects with the next step already resolved by the server.
   Future<Map<String, dynamic>> work() => _get('/work');
@@ -216,14 +219,13 @@ class Api {
     int? adults,
     int? children,
     bool acknowledge = false,
-  }) =>
-      _post('/enquiries', {
-        'name': name,
-        'phone': phone,
-        'email': email,
-        'notes': notes,
-        'adults': adults,
-        'children': children,
-        'acknowledge': acknowledge,
-      });
+  }) => _post('/enquiries', {
+    'name': name,
+    'phone': phone,
+    'email': email,
+    'notes': notes,
+    'adults': adults,
+    'children': children,
+    'acknowledge': acknowledge,
+  });
 }

@@ -99,11 +99,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                     letterSpacing: -0.5,
                                     color: dark ? Brand.darkInk : Brand.ink,
                                   ),
-                                  children: const [
-                                    TextSpan(text: 'Makutano '),
+                                  children: [
+                                    const TextSpan(text: 'Makutano '),
                                     TextSpan(
                                       text: 'Connect',
-                                      style: TextStyle(color: Brand.blue),
+                                      style: TextStyle(color: Tone.blue(context)),
                                     ),
                                   ],
                                 ),
@@ -137,19 +137,19 @@ class _LoginScreenState extends State<LoginScreen> {
                       Container(
                         padding: const EdgeInsets.fromLTRB(13, 11, 13, 11),
                         decoration: BoxDecoration(
-                          color: Brand.danger.withValues(alpha: dark ? 0.16 : 0.06),
+                          color: Tone.danger(context).withValues(alpha: dark ? 0.16 : 0.06),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Brand.danger.withValues(alpha: 0.28)),
+                          border: Border.all(color: Tone.danger(context).withValues(alpha: 0.28)),
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.error_outline_rounded, color: Brand.danger, size: 18),
+                            Icon(Icons.error_outline_rounded, color: Tone.danger(context), size: 18),
                             const SizedBox(width: 9),
                             Expanded(
                               child: Text(
                                 _error!,
-                                style: const TextStyle(color: Brand.danger, fontSize: 13.5, height: 1.35),
+                                style: TextStyle(color: Tone.danger(context), fontSize: 13.5, height: 1.35),
                               ),
                             ),
                           ],

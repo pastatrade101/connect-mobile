@@ -67,9 +67,11 @@ class InboxScreenState extends State<InboxScreen> {
     if (_query.trim().isEmpty) return _threads;
     final q = _query.toLowerCase();
     return _threads
-        .where((t) =>
-            (t['name'] ?? '').toString().toLowerCase().contains(q) ||
-            (t['preview'] ?? '').toString().toLowerCase().contains(q))
+        .where(
+          (t) =>
+              (t['name'] ?? '').toString().toLowerCase().contains(q) ||
+              (t['preview'] ?? '').toString().toLowerCase().contains(q),
+        )
         .toList();
   }
 
@@ -113,11 +115,7 @@ class InboxScreenState extends State<InboxScreen> {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  for (final option in const [
-                    ('all', 'All'),
-                    ('mine', 'Mine'),
-                    ('unassigned', 'Open'),
-                  ])
+                  for (final option in const [('all', 'All'), ('mine', 'Mine'), ('unassigned', 'Open')])
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: _FilterChip(
@@ -141,29 +139,33 @@ class InboxScreenState extends State<InboxScreen> {
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _error != null
-                  ? _InboxMessage(icon: Icons.cloud_off_rounded, title: 'Could not load your chats', body: _error!)
-                  : _visible.isEmpty
-                      ? _InboxMessage(
-                          icon: Icons.forum_outlined,
-                          title: _query.isNotEmpty ? 'Nothing matches that' : 'No chats here yet',
-                          body: _query.isNotEmpty
-                              ? 'Try a different name or number.'
-                              : _filter == 'mine'
-                                  ? 'Chats assigned to you will appear here.'
-                                  : 'WhatsApp conversations appear here as customers write in.',
-                        )
-                      : RefreshIndicator(
-                          onRefresh: load,
-                          child: ListView.separated(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            itemCount: _visible.length,
-                            separatorBuilder: (_, __) => const Divider(height: 1, indent: 76),
-                            itemBuilder: (context, i) => _ThreadTile(
-                              thread: _visible[i],
-                              onTap: () => widget.onOpenThread((_visible[i]['id'] ?? '').toString()),
-                            ),
-                          ),
-                        ),
+              ? _InboxMessage(
+                  icon: Icons.cloud_off_rounded,
+                  title: 'Could not load your chats',
+                  body: _error!,
+                )
+              : _visible.isEmpty
+              ? _InboxMessage(
+                  icon: Icons.forum_outlined,
+                  title: _query.isNotEmpty ? 'Nothing matches that' : 'No chats here yet',
+                  body: _query.isNotEmpty
+                      ? 'Try a different name or number.'
+                      : _filter == 'mine'
+                      ? 'Chats assigned to you will appear here.'
+                      : 'WhatsApp conversations appear here as customers write in.',
+                )
+              : RefreshIndicator(
+                  onRefresh: load,
+                  child: ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: _visible.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1, indent: 76),
+                    itemBuilder: (context, i) => _ThreadTile(
+                      thread: _visible[i],
+                      onTap: () => widget.onOpenThread((_visible[i]['id'] ?? '').toString()),
+                    ),
+                  ),
+                ),
         ),
       ],
     );
@@ -185,9 +187,9 @@ class _FilterChip extends StatelessWidget {
         duration: const Duration(milliseconds: 140),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? Brand.blue : (dark ? Brand.darkPanel : Brand.surface),
+          color: selected ? Tone.blue(context) : (dark ? Brand.darkPanel : Brand.surface),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: selected ? Brand.blue : (dark ? Brand.darkLine : Brand.line)),
+          border: Border.all(color: selected ? Tone.blue(context) : (dark ? Brand.darkLine : Brand.line)),
         ),
         child: Text(
           label,
@@ -221,10 +223,10 @@ class _ThreadTile extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       leading: CircleAvatar(
         radius: 24,
-        backgroundColor: Brand.blueWash,
+        backgroundColor: Tone.blueWash(context),
         child: Text(
           initialsOf(name),
-          style: const TextStyle(color: Brand.blue, fontWeight: FontWeight.w700, fontSize: 15),
+          style: TextStyle(color: Tone.blue(context), fontWeight: FontWeight.w700, fontSize: 15),
         ),
       ),
       title: Row(
@@ -235,12 +237,15 @@ class _ThreadTile extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w600,
-                    fontSize: 15.5,
-                  ),
+                fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w600,
+                fontSize: 15.5,
+              ),
             ),
           ),
-          Text(_when(thread['lastMessageAt']), style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11.5)),
+          Text(
+            _when(thread['lastMessageAt']),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11.5),
+          ),
         ],
       ),
       subtitle: Padding(
@@ -265,14 +270,21 @@ class _ThreadTile extends StatelessWidget {
                 ),
                 child: Text(
                   assignedTo.toString(),
-                  style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Theme.of(context).textTheme.bodySmall?.color),
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).textTheme.bodySmall?.color,
+                  ),
                 ),
               ),
             if (unread > 0)
               Container(
                 margin: const EdgeInsets.only(left: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(color: const Color(0xFF25D366), borderRadius: BorderRadius.circular(20)),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF25D366),
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 child: Text(
                   '$unread',
                   style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
@@ -310,7 +322,7 @@ class _InboxMessage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 36, color: Brand.inkFaint),
+            Icon(icon, size: 36, color: Tone.muted(context)),
             const SizedBox(height: 14),
             Text(title, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 6),

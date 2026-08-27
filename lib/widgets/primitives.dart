@@ -79,10 +79,10 @@ class MobileHeader extends StatelessWidget {
                 padding: const EdgeInsets.all(6),
                 child: CircleAvatar(
                   radius: 16,
-                  backgroundColor: Brand.blueWash,
+                  backgroundColor: Tone.blueWash(context),
                   child: Text(
                     initials!,
-                    style: const TextStyle(color: Brand.blue, fontWeight: FontWeight.w700, fontSize: 12.5),
+                    style: TextStyle(color: Tone.blue(context), fontWeight: FontWeight.w700, fontSize: 12.5),
                   ),
                 ),
               ),
@@ -126,7 +126,7 @@ class _Bell extends StatelessWidget {
                   constraints: const BoxConstraints(minWidth: 16),
                   padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                   decoration: BoxDecoration(
-                    color: Brand.danger,
+                    color: Tone.danger(context),
                     borderRadius: BorderRadius.circular(9),
                     border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 1.5),
                   ),
@@ -174,7 +174,7 @@ class GroupLabel extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                 child: Text(
                   action!,
-                  style: const TextStyle(color: Brand.blue, fontSize: 12.5, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: Tone.blue(context), fontSize: 12.5, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -227,10 +227,10 @@ class AttentionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final urgency = (item['urgency'] ?? 'normal').toString();
     final color = urgency == 'critical'
-        ? Brand.danger
+        ? Tone.danger(context)
         : urgency == 'high'
-        ? Brand.warning
-        : Brand.blue;
+        ? Tone.warning(context)
+        : Tone.blue(context);
     final mine = (item['scope'] ?? '') == 'mine';
     final count = (item['count'] as num? ?? 0).toInt();
 
@@ -275,12 +275,16 @@ class AttentionRow extends StatelessWidget {
                           margin: const EdgeInsets.only(left: 7),
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                           decoration: BoxDecoration(
-                            color: Brand.blueWash,
+                            color: Tone.blueWash(context),
                             borderRadius: BorderRadius.circular(5),
                           ),
-                          child: const Text(
+                          child: Text(
                             'you',
-                            style: TextStyle(color: Brand.blue, fontSize: 10, fontWeight: FontWeight.w700),
+                            style: TextStyle(
+                              color: Tone.blue(context),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                     ],
@@ -356,8 +360,11 @@ class ContinueRow extends StatelessWidget {
               height: 36,
               alignment: Alignment.center,
               margin: const EdgeInsets.only(right: 12),
-              decoration: BoxDecoration(color: Brand.blueWash, borderRadius: BorderRadius.circular(10)),
-              child: Icon(_icons[kind] ?? Icons.forum_outlined, size: 18, color: Brand.blue),
+              decoration: BoxDecoration(
+                color: Tone.blueWash(context),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(_icons[kind] ?? Icons.forum_outlined, size: 18, color: Tone.blue(context)),
             ),
             Expanded(
               child: Column(
@@ -414,7 +421,7 @@ class CalmIndicator extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 2, 18, 6),
       child: Row(
         children: [
-          const Icon(Icons.check_circle_rounded, size: 16, color: Brand.success),
+          Icon(Icons.check_circle_rounded, size: 16, color: Tone.success(context)),
           const SizedBox(width: 8),
           Expanded(child: Text(text, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 13.5))),
         ],
@@ -448,8 +455,8 @@ class NextActionButton extends StatelessWidget {
         style: TextButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           minimumSize: const Size(0, 36),
-          backgroundColor: Brand.blueWash,
-          foregroundColor: Brand.blue,
+          backgroundColor: Tone.blueWash(context),
+          foregroundColor: Tone.blue(context),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         child: Text(label, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
@@ -458,7 +465,7 @@ class NextActionButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Material(
-        color: Brand.blue,
+        color: Tone.blue(context),
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,
@@ -516,26 +523,45 @@ class TodayCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (tiles.isEmpty) return const SizedBox.shrink();
     final shown = tiles.take(3).toList();
+    final dark = Tone.isDark(context);
 
     return Container(
       margin: const EdgeInsets.fromLTRB(14, 2, 14, 4),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
+        // At night the card stops being a lamp: a deep surface lifted a little off
+        // the black, with the blue kept for the accents rather than the whole field.
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF1C84EE), Color(0xFF0F5FB8)],
+          colors: dark
+              ? const [Color(0xFF16202C), Color(0xFF0D131B)]
+              : const [Color(0xFF1C84EE), Color(0xFF0F5FB8)],
         ),
-        boxShadow: [
-          BoxShadow(color: Brand.blue.withValues(alpha: 0.28), blurRadius: 18, offset: const Offset(0, 8)),
-        ],
+        border: dark ? Border.all(color: Brand.darkLine) : null,
+        boxShadow: dark
+            ? null
+            : [
+                BoxShadow(
+                  color: Brand.blue.withValues(alpha: 0.28),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
-          // Two soft discs, half off the edge — depth without a texture file.
-          Positioned(right: -46, top: -58, child: _Disc(size: 168, opacity: 0.13)),
-          const Positioned(right: 54, bottom: -74, child: _Disc(size: 132, opacity: 0.08)),
+          Positioned(
+            right: -46,
+            top: -58,
+            child: _Disc(size: 168, color: dark ? Brand.darkBlue : Colors.white, opacity: dark ? 0.07 : 0.13),
+          ),
+          Positioned(
+            right: 54,
+            bottom: -74,
+            child: _Disc(size: 132, color: dark ? Brand.darkBlue : Colors.white, opacity: dark ? 0.05 : 0.08),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
             child: Column(
@@ -547,7 +573,7 @@ class TodayCard extends StatelessWidget {
                     Text(
                       'TODAY',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.75),
+                        color: dark ? Brand.darkBlue : Colors.white.withValues(alpha: 0.75),
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.1,
@@ -557,7 +583,7 @@ class TodayCard extends StatelessWidget {
                     Text(
                       DateFormat('EEE d MMM').format(DateTime.now()),
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
+                        color: dark ? Brand.darkInkSoft : Colors.white.withValues(alpha: 0.7),
                         fontSize: 11.5,
                         fontWeight: FontWeight.w600,
                       ),
@@ -574,7 +600,7 @@ class TodayCard extends StatelessWidget {
                           width: 1,
                           height: 30,
                           margin: const EdgeInsets.symmetric(horizontal: 10),
-                          color: Colors.white.withValues(alpha: 0.22),
+                          color: dark ? Brand.darkLine : Colors.white.withValues(alpha: 0.22),
                         ),
                       Expanded(
                         child: _Stat(tile: shown[i], currency: currency),
@@ -592,9 +618,10 @@ class TodayCard extends StatelessWidget {
 }
 
 class _Disc extends StatelessWidget {
-  const _Disc({required this.size, required this.opacity});
+  const _Disc({required this.size, required this.opacity, required this.color});
   final double size;
   final double opacity;
+  final Color color;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -602,7 +629,7 @@ class _Disc extends StatelessWidget {
     height: size,
     decoration: BoxDecoration(
       shape: BoxShape.circle,
-      color: Colors.white.withValues(alpha: opacity),
+      color: color.withValues(alpha: opacity),
     ),
   );
 }
@@ -614,6 +641,10 @@ class _Stat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Tone.isDark(context);
+    final value_ = dark ? Brand.darkInk : Colors.white;
+    final label_ = dark ? Brand.darkInkSoft : Colors.white.withValues(alpha: 0.78);
+    final unit = dark ? Brand.darkBlue : Colors.white.withValues(alpha: 0.8);
     final money = (tile['kind'] ?? 'count') == 'money';
     final raw = (tile['value'] ?? '0').toString();
     final value = money ? _money(raw) : raw;
@@ -629,11 +660,7 @@ class _Stat extends StatelessWidget {
             if (money && currency.isNotEmpty) ...[
               Text(
                 currency,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.8),
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(color: unit, fontSize: 11.5, fontWeight: FontWeight.w700),
               ),
               const SizedBox(width: 3),
             ],
@@ -642,8 +669,8 @@ class _Stat extends StatelessWidget {
                 value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: value_,
                   fontSize: 22,
                   height: 1.1,
                   fontWeight: FontWeight.w800,
@@ -658,11 +685,7 @@ class _Stat extends StatelessWidget {
           _short((tile['label'] ?? '').toString()),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.78),
-            fontSize: 11.5,
-            fontWeight: FontWeight.w500,
-          ),
+          style: TextStyle(color: label_, fontSize: 11.5, fontWeight: FontWeight.w500),
         ),
       ],
     );
@@ -774,7 +797,7 @@ class StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final tone = _toneFor(label);
+    final tone = _toneFor(context, label);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
       decoration: BoxDecoration(
@@ -788,16 +811,16 @@ class StatusChip extends StatelessWidget {
     );
   }
 
-  static Color _toneFor(String label) {
+  static Color _toneFor(BuildContext context, String label) {
     final l = label.toLowerCase();
     if (l.contains('paid') || l.contains('confirmed') || l.contains('accepted') || l.contains('received')) {
-      return Brand.success;
+      return Tone.success(context);
     }
     if (l.contains('awaiting') || l.contains('waiting') || l.contains('pending') || l.contains('new')) {
-      return Brand.warning;
+      return Tone.warning(context);
     }
-    if (l.contains('cancel') || l.contains('fail') || l.contains('declin')) return Brand.danger;
-    return Brand.blue;
+    if (l.contains('cancel') || l.contains('fail') || l.contains('declin')) return Tone.danger(context);
+    return Tone.blue(context);
   }
 }
 
@@ -821,7 +844,10 @@ class ActivityRow extends StatelessWidget {
               width: 6,
               height: 6,
               margin: const EdgeInsets.only(top: 6, right: 11),
-              decoration: BoxDecoration(color: Brand.inkFaint.withValues(alpha: 0.5), shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: Tone.muted(context).withValues(alpha: 0.5),
+                shape: BoxShape.circle,
+              ),
             ),
             Expanded(
               child: Text(text, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 14)),
@@ -873,7 +899,7 @@ class TeachingEmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 32, color: Brand.inkFaint),
+          Icon(icon, size: 32, color: Tone.muted(context)),
           const SizedBox(height: 14),
           Text(title, textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 6),

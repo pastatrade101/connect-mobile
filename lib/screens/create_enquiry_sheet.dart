@@ -96,11 +96,11 @@ class _CreateEnquirySheetState extends State<CreateEnquirySheet> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
             decoration: BoxDecoration(
-              color: Brand.danger.withValues(alpha: 0.08),
+              color: Tone.danger(context).withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Brand.danger.withValues(alpha: 0.3)),
+              border: Border.all(color: Tone.danger(context).withValues(alpha: 0.3)),
             ),
-            child: Text(_error!, style: const TextStyle(color: Brand.danger, fontSize: 13.5)),
+            child: Text(_error!, style: TextStyle(color: Tone.danger(context), fontSize: 13.5)),
           ),
           const SizedBox(height: 14),
         ],
@@ -158,7 +158,11 @@ class _CreateEnquirySheetState extends State<CreateEnquirySheet> {
         FilledButton(
           onPressed: _busy ? null : _submit,
           child: _busy
-              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white))
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
+                )
               : Text('Create ${widget.noun}'),
         ),
       ],
@@ -174,7 +178,7 @@ class _CreateEnquirySheetState extends State<CreateEnquirySheet> {
       children: [
         Row(
           children: [
-            const Icon(Icons.check_circle_rounded, color: Brand.success, size: 22),
+            Icon(Icons.check_circle_rounded, color: Tone.success(context), size: 22),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -236,10 +240,16 @@ class QuickCreateSheet extends StatelessWidget {
                       width: 38,
                       height: 38,
                       alignment: Alignment.center,
-                      decoration: BoxDecoration(color: Brand.blueWash, borderRadius: BorderRadius.circular(10)),
-                      child: Icon(action.icon as IconData, color: Brand.blue, size: 19),
+                      decoration: BoxDecoration(
+                        color: Tone.blueWash(context),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(action.icon as IconData, color: Tone.blue(context), size: 19),
                     ),
-                    title: Text(action.label as String, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                    title: Text(
+                      action.label as String,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                    ),
                     subtitle: Text(action.hint as String, style: Theme.of(context).textTheme.bodySmall),
                     trailing: const Icon(Icons.chevron_right_rounded, size: 19),
                   ),

@@ -1,5 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+/// Light, dark, or whatever the phone is doing — remembered between launches.
+///
+/// A notifier rather than a state-management package: one value, read in one
+/// place, changed from one screen.
+class AppTheme {
+  const AppTheme._();
+
+  static final mode = ValueNotifier<ThemeMode>(ThemeMode.system);
+
+  static Future<void> restore() async {
+    final prefs = await SharedPreferences.getInstance();
+    mode.value = _parse(prefs.getString('themeMode'));
+  }
+
+  static Future<void> set(ThemeMode next) async {
+    mode.value = next;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('themeMode', next.name);
+  }
+
+  static ThemeMode _parse(String? raw) => switch (raw) {
+    'light' => ThemeMode.light,
+    'dark' => ThemeMode.dark,
+    _ => ThemeMode.system,
+  };
+}
 
 /// The look, in one place.
 ///
@@ -9,6 +37,7 @@ import 'package:flutter/services.dart';
 class Brand {
   const Brand._();
 
+  // ── light ───────────────────────────────────────────────────────────────────
   static const blue = Color(0xFF1C84EE);
   static const blueDark = Color(0xFF1565C0);
   static const blueWash = Color(0xFFE8F1FD);
@@ -21,9 +50,9 @@ class Brand {
   static const surface = Color(0xFFFFFFFF);
   static const ground = Color(0xFFF5F7FA);
 
-  static const success = Color(0xFF0F7050);
-  static const warning = Color(0xFFB58514);
-  static const danger = Color(0xFFC0392B);
+  static const success = Color(0xFF0E8A5F);
+  static const warning = Color(0xFFB07100);
+  static const danger = Color(0xFFD1352B);
 
   // Chat surfaces, matching the portal's thread view.
   static const chatGround = Color(0xFFEFE7DE);
@@ -31,14 +60,60 @@ class Brand {
   static const bubbleOut = Color(0xFFD9FDD3);
   static const chatBar = Color(0xFFF0F2F5);
 
-  // Dark mode uses WhatsApp's own dark palette, as the portal does.
-  static const darkGround = Color(0xFF0B141A);
-  static const darkSurface = Color(0xFF141D2A);
-  static const darkPanel = Color(0xFF202C33);
-  static const darkLine = Color(0xFF2A3742);
-  static const darkInk = Color(0xFFE9EDEF);
-  static const darkInkSoft = Color(0xFF8696A0);
-  static const darkBubbleOut = Color(0xFF005C4B);
+  // ── dark ────────────────────────────────────────────────────────────────────
+  //
+  // A settled black to sit on, three steps of surface above it, and accents that
+  // are BRIGHTER than their light-mode twins rather than the same colour dimmed.
+  // A #0E8A5F green is readable on white and nearly invisible on black; the dark
+  // palette therefore has its own values, chosen for contrast on this ground.
+  static const darkGround = Color(0xFF07090C);
+  static const darkSurface = Color(0xFF12161C);
+  static const darkPanel = Color(0xFF1A2029);
+  static const darkLine = Color(0xFF283240);
+  static const darkInk = Color(0xFFF3F6FA);
+  static const darkInkSoft = Color(0xFF9BAABA);
+
+  static const darkBlue = Color(0xFF4CA3FF);
+  static const darkBlueWash = Color(0xFF10263D);
+  static const darkSuccess = Color(0xFF35D48A);
+  static const darkWarning = Color(0xFFFFB224);
+  static const darkDanger = Color(0xFFFF6B61);
+
+  static const darkChatGround = Color(0xFF0A0F14);
+  static const darkBubbleIn = Color(0xFF1B242E);
+  static const darkBubbleOut = Color(0xFF0B5C4A);
+}
+
+/// The same colour, in whichever theme is on screen.
+///
+/// Every accent in this app goes through here. Reading a raw `Brand.success` in a
+/// widget is how you end up with dark green text on a black card — the light value
+/// looks right in the editor and disappears on the device.
+class Tone {
+  const Tone._();
+
+  static bool isDark(BuildContext c) => Theme.of(c).brightness == Brightness.dark;
+
+  static Color blue(BuildContext c) => isDark(c) ? Brand.darkBlue : Brand.blue;
+  static Color blueWash(BuildContext c) => isDark(c) ? Brand.darkBlueWash : Brand.blueWash;
+  static Color success(BuildContext c) => isDark(c) ? Brand.darkSuccess : Brand.success;
+  static Color warning(BuildContext c) => isDark(c) ? Brand.darkWarning : Brand.warning;
+  static Color danger(BuildContext c) => isDark(c) ? Brand.darkDanger : Brand.danger;
+
+  static Color ink(BuildContext c) => isDark(c) ? Brand.darkInk : Brand.ink;
+  static Color muted(BuildContext c) => isDark(c) ? Brand.darkInkSoft : Brand.inkFaint;
+  static Color line(BuildContext c) => isDark(c) ? Brand.darkLine : Brand.line;
+  static Color surface(BuildContext c) => isDark(c) ? Brand.darkSurface : Brand.surface;
+  static Color panel(BuildContext c) => isDark(c) ? Brand.darkPanel : Brand.ground;
+  static Color ground(BuildContext c) => isDark(c) ? Brand.darkGround : Brand.ground;
+
+  static Color chatGround(BuildContext c) => isDark(c) ? Brand.darkChatGround : Brand.chatGround;
+  static Color bubbleIn(BuildContext c) => isDark(c) ? Brand.darkBubbleIn : Brand.bubbleIn;
+  static Color bubbleOut(BuildContext c) => isDark(c) ? Brand.darkBubbleOut : Brand.bubbleOut;
+
+  /// A tint of an accent for chip and pill backgrounds — stronger in the dark,
+  /// where a 6% wash simply vanishes.
+  static Color wash(BuildContext c, Color accent) => accent.withValues(alpha: isDark(c) ? 0.20 : 0.10);
 }
 
 ThemeData buildTheme({required Brightness brightness}) {
@@ -46,7 +121,7 @@ ThemeData buildTheme({required Brightness brightness}) {
   final scheme = ColorScheme.fromSeed(
     seedColor: Brand.blue,
     brightness: brightness,
-    primary: dark ? const Color(0xFF63A8F0) : Brand.blue,
+    primary: dark ? Brand.darkBlue : Brand.blue,
     surface: dark ? Brand.darkSurface : Brand.surface,
   );
 
@@ -80,12 +155,24 @@ ThemeData buildTheme({required Brightness brightness}) {
       ),
     ),
     dividerTheme: DividerThemeData(color: dark ? Brand.darkLine : Brand.line, thickness: 1, space: 1),
-    textTheme: base.textTheme.apply(bodyColor: onGround, displayColor: onGround).copyWith(
-          titleLarge: TextStyle(color: onGround, fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.4),
+    textTheme: base.textTheme
+        .apply(bodyColor: onGround, displayColor: onGround)
+        .copyWith(
+          titleLarge: TextStyle(
+            color: onGround,
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+          ),
           titleMedium: TextStyle(color: onGround, fontSize: 16, fontWeight: FontWeight.w600),
           bodyMedium: TextStyle(color: onGround, fontSize: 15, height: 1.4),
           bodySmall: TextStyle(color: muted, fontSize: 13, height: 1.35),
-          labelSmall: TextStyle(color: muted, fontSize: 11.5, fontWeight: FontWeight.w600, letterSpacing: 0.6),
+          labelSmall: TextStyle(
+            color: muted,
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.6,
+          ),
         ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
@@ -117,14 +204,14 @@ ThemeData buildTheme({required Brightness brightness}) {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Brand.blue, width: 1.6),
+        borderSide: BorderSide(color: dark ? Brand.darkBlue : Brand.blue, width: 1.6),
       ),
       labelStyle: TextStyle(color: muted, fontSize: 14),
       hintStyle: TextStyle(color: muted, fontSize: 15),
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: dark ? Brand.darkSurface : Brand.surface,
-      indicatorColor: dark ? const Color(0xFF16283D) : Brand.blueWash,
+      indicatorColor: dark ? Brand.darkBlueWash : Brand.blueWash,
       height: 64,
       labelTextStyle: WidgetStatePropertyAll(
         TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: muted),

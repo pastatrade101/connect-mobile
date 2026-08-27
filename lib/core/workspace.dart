@@ -10,11 +10,11 @@ import 'api.dart';
 enum Workspace { bookings, orders, service, hybrid }
 
 Workspace workspaceOf(String raw) => switch (raw) {
-      'BOOKINGS' => Workspace.bookings,
-      'ORDERS' => Workspace.orders,
-      'SERVICE' => Workspace.service,
-      _ => Workspace.hybrid,
-    };
+  'BOOKINGS' => Workspace.bookings,
+  'ORDERS' => Workspace.orders,
+  'SERVICE' => Workspace.service,
+  _ => Workspace.hybrid,
+};
 
 class QuickAction {
   const QuickAction({
@@ -42,30 +42,36 @@ List<QuickAction> quickActionsFor(Session session) {
   final takesOrders = workspace == Workspace.orders || workspace == Workspace.hybrid;
 
   if (takesEnquiries && session.can('booking_requests:write')) {
-    actions.add(QuickAction(
-      key: 'enquiry',
-      label: workspace == Workspace.service ? 'New request' : 'New enquiry',
-      hint: 'Log what a customer asked for',
-      icon: Icons.bookmark_add_outlined,
-      primary: true,
-    ));
+    actions.add(
+      QuickAction(
+        key: 'enquiry',
+        label: workspace == Workspace.service ? 'New request' : 'New enquiry',
+        hint: 'Log what a customer asked for',
+        icon: Icons.bookmark_add_outlined,
+        primary: true,
+      ),
+    );
   }
   if (takesOrders && session.can('orders:write')) {
-    actions.add(QuickAction(
-      key: 'order',
-      label: 'New order',
-      hint: 'Record a customer order',
-      icon: Icons.receipt_long_outlined,
-      primary: actions.isEmpty,
-    ));
+    actions.add(
+      QuickAction(
+        key: 'order',
+        label: 'New order',
+        hint: 'Record a customer order',
+        icon: Icons.receipt_long_outlined,
+        primary: actions.isEmpty,
+      ),
+    );
   }
   if (session.can('conversations:read')) {
-    actions.add(const QuickAction(
-      key: 'inbox',
-      label: 'Open inbox',
-      hint: 'Answer a customer now',
-      icon: Icons.forum_outlined,
-    ));
+    actions.add(
+      const QuickAction(
+        key: 'inbox',
+        label: 'Open inbox',
+        hint: 'Answer a customer now',
+        icon: Icons.forum_outlined,
+      ),
+    );
   }
   return actions;
 }
@@ -89,8 +95,9 @@ List<({String kind, String label})> workKindsFor(Session session) {
 
 /// One line explaining how work reaches a business that has none yet.
 String howWorkArrives(Workspace workspace) => switch (workspace) {
-      Workspace.orders =>
-        'Orders arrive from a shared order link, from WhatsApp, or you can write one down here.',
-      Workspace.service => 'Requests arrive from your website and WhatsApp — or log one while you are on the phone.',
-      _ => 'Enquiries arrive from your website and WhatsApp — or log one while the traveller is still talking.',
-    };
+  Workspace.orders =>
+    'Orders arrive from a shared order link, from WhatsApp, or you can write one down here.',
+  Workspace.service =>
+    'Requests arrive from your website and WhatsApp — or log one while you are on the phone.',
+  _ => 'Enquiries arrive from your website and WhatsApp — or log one while the traveller is still talking.',
+};
