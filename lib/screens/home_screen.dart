@@ -9,7 +9,7 @@ import '../widgets/primitives.dart';
 ///
 ///   ACT      — what needs me right now, and why
 ///   CONTINUE — what was I in the middle of, as business rather than chatter
-///   OVERVIEW — how is today going, kept quiet at the bottom
+///   OVERVIEW — how is today going, on one card at the top
 ///
 /// Every line on this screen is written by the server: the attention model decides
 /// what is waiting, and the shared next-action resolver decides what state a
@@ -179,6 +179,11 @@ class HomeScreenState extends State<HomeScreen> {
                 : null,
           ),
 
+          // ── OVERVIEW ───────────────────────────────────────────────────────
+          // How the day is going, at a glance, before anything asks for a decision.
+          if (today.isNotEmpty) TodayCard(tiles: today, currency: session.currency),
+          if (today.isNotEmpty) const SizedBox(height: 14),
+
           // ── ACT ────────────────────────────────────────────────────────────
           if (attention.isNotEmpty) ...[
             const GroupLabel(text: 'Needs you'),
@@ -262,13 +267,6 @@ class HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-          ],
-
-          // ── OVERVIEW ───────────────────────────────────────────────────────
-          if (today.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            const GroupLabel(text: 'Today'),
-            CompactStats(tiles: today.take(3).toList()),
           ],
 
           if (notes.isNotEmpty) ...[

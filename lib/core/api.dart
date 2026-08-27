@@ -25,6 +25,7 @@ class Session {
     required this.userName,
     required this.userEmail,
     required this.tenantName,
+    required this.currency,
     required this.workspace,
     required this.role,
     required this.persona,
@@ -35,6 +36,9 @@ class Session {
   final String userName;
   final String userEmail;
   final String tenantName;
+
+  /// What money is counted in here — amounts are never shown bare.
+  final String currency;
   final String workspace;
   final String role;
   final String persona;
@@ -47,6 +51,7 @@ class Session {
         'userName': userName,
         'userEmail': userEmail,
         'tenantName': tenantName,
+        'currency': currency,
         'workspace': workspace,
         'role': role,
         'persona': persona,
@@ -58,6 +63,7 @@ class Session {
         userName: (json['userName'] ?? '') as String,
         userEmail: (json['userEmail'] ?? '') as String,
         tenantName: (json['tenantName'] ?? '') as String,
+        currency: (json['currency'] ?? '') as String,
         workspace: (json['workspace'] ?? 'HYBRID') as String,
         role: (json['role'] ?? '') as String,
         persona: (json['persona'] ?? 'agent') as String,
@@ -157,6 +163,7 @@ class Api {
       userName: (user['name'] ?? '') as String,
       userEmail: (user['email'] ?? '') as String,
       tenantName: (tenant['name'] ?? '') as String,
+      currency: (tenant['currency'] ?? '') as String,
       workspace: (tenant['workspace'] ?? 'HYBRID') as String,
       role: (data['role'] ?? '') as String,
       persona: (data['persona'] ?? 'agent') as String,

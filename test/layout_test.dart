@@ -92,19 +92,23 @@ void main() {
         expect(find.textContaining('TZS 12,450,000'), findsOneWidget);
       });
 
-      testWidgets('today’s numbers stay on one line', (tester) async {
+      testWidgets('today’s card holds three stats and a big amount', (tester) async {
         await pumpAt(
           tester,
           width,
-          const CompactStats(
+          const TodayCard(
+            currency: 'TZS',
             tiles: [
-              {'label': 'New chats today', 'value': '128'},
-              {'label': 'Enquiries today', 'value': '64'},
-              {'label': 'Received today', 'value': '12,450,000'},
+              {'label': 'New chats today', 'value': '128', 'kind': 'count'},
+              {'label': 'Enquiries today', 'value': '64', 'kind': 'count'},
+              {'label': 'Received today', 'value': '12450000.00', 'kind': 'money'},
             ],
           ),
         );
         expect(find.text('Chats'), findsOneWidget);
+        expect(find.text('TZS'), findsOneWidget);
+        // Whole units, grouped — never a bare "12450000.00".
+        expect(find.text('12,450,000'), findsOneWidget);
       });
 
       testWidgets('the header fits a greeting, a bell and an avatar on one row', (tester) async {

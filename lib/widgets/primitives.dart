@@ -500,58 +500,184 @@ class NextActionButton extends StatelessWidget {
 // ── compact stats ─────────────────────────────────────────────────────────────
 
 /// Today, in one line. Secondary information stays secondary.
-class CompactStats extends StatelessWidget {
-  const CompactStats({super.key, required this.tiles});
+/// Today, at the top, on the only decorated surface in the app.
+///
+/// Everything else here is a white row on a grey ground, deliberately. This one
+/// card earns its colour by being the single glanceable summary of the day —
+/// and it is the last thing the eye should stop on, not the first thing it fights.
+class TodayCard extends StatelessWidget {
+  const TodayCard({super.key, required this.tiles, this.currency = ''});
   final List<Map<String, dynamic>> tiles;
+
+  /// Amounts are shown in the business's own currency, never bare.
+  final String currency;
 
   @override
   Widget build(BuildContext context) {
     if (tiles.isEmpty) return const SizedBox.shrink();
-    final dark = Theme.of(context).brightness == Brightness.dark;
+    final shown = tiles.take(3).toList();
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 14),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+      margin: const EdgeInsets.fromLTRB(14, 2, 14, 4),
       decoration: BoxDecoration(
-        color: dark ? Brand.darkSurface : Brand.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: dark ? Brand.darkLine : Brand.line),
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1C84EE), Color(0xFF0F5FB8)],
+        ),
+        boxShadow: [
+          BoxShadow(color: Brand.blue.withValues(alpha: 0.28), blurRadius: 18, offset: const Offset(0, 8)),
+        ],
       ),
-      child: Row(
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
         children: [
-          for (var i = 0; i < tiles.length; i++) ...[
-            if (i > 0) Container(width: 1, height: 26, color: dark ? Brand.darkLine : Brand.line),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    (tiles[i]['value'] ?? '0').toString(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.titleMedium?.copyWith(fontSize: 17, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _short((tiles[i]['label'] ?? '').toString()),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11.5),
-                  ),
-                ],
-              ),
+          // Two soft discs, half off the edge — depth without a texture file.
+          Positioned(right: -46, top: -58, child: _Disc(size: 168, opacity: 0.13)),
+          const Positioned(right: 54, bottom: -74, child: _Disc(size: 132, opacity: 0.08)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'TODAY',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.75),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      DateFormat('EEE d MMM').format(DateTime.now()),
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    for (var i = 0; i < shown.length; i++) ...[
+                      if (i > 0)
+                        Container(
+                          width: 1,
+                          height: 30,
+                          margin: const EdgeInsets.symmetric(horizontal: 10),
+                          color: Colors.white.withValues(alpha: 0.22),
+                        ),
+                      Expanded(
+                        child: _Stat(tile: shown[i], currency: currency),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );
+  }
+}
+
+class _Disc extends StatelessWidget {
+  const _Disc({required this.size, required this.opacity});
+  final double size;
+  final double opacity;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: Colors.white.withValues(alpha: opacity),
+    ),
+  );
+}
+
+class _Stat extends StatelessWidget {
+  const _Stat({required this.tile, required this.currency});
+  final Map<String, dynamic> tile;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    final money = (tile['kind'] ?? 'count') == 'money';
+    final raw = (tile['value'] ?? '0').toString();
+    final value = money ? _money(raw) : raw;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            if (money && currency.isNotEmpty) ...[
+              Text(
+                currency,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 3),
+            ],
+            Flexible(
+              child: Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  height: 1.1,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        Text(
+          _short((tile['label'] ?? '').toString()),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.78),
+            fontSize: 11.5,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Whole shillings on a phone: the cents are noise at this size.
+  static String _money(String raw) {
+    final n = double.tryParse(raw) ?? 0;
+    return NumberFormat.decimalPattern('en').format(n.round());
   }
 
   /// "New chats today" reads as "Chats" once it is sitting under a number.
   static String _short(String label) => label
       .replaceAll(RegExp(r'\btoday\b', caseSensitive: false), '')
-      .replaceAll(RegExp(r'^(New|Your)\s+', caseSensitive: false), '')
+      .replaceAll(RegExp(r'^(New)\s+', caseSensitive: false), '')
       .trim()
       .replaceFirstMapped(RegExp(r'^\w'), (m) => m[0]!.toUpperCase());
 }
