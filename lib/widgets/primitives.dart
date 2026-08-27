@@ -11,8 +11,11 @@ import '../core/theme.dart';
 
 // ── header ────────────────────────────────────────────────────────────────────
 
-/// Compact top of a screen: what you are looking at, one line of why, and the
-/// account. No oversized title bar eating the first viewport.
+/// The top of a screen, kept deliberately short.
+///
+/// One line of who and where, one small line of context, and the two controls a
+/// phone actually needs there: what is new, and me. It used to run to three lines
+/// on a narrow phone and push the real work below the fold.
 class MobileHeader extends StatelessWidget {
   const MobileHeader({
     super.key,
@@ -21,6 +24,8 @@ class MobileHeader extends StatelessWidget {
     this.initials,
     this.onAccountTap,
     this.trailing,
+    this.onAlerts,
+    this.alerts = 0,
   });
 
   final String title;
@@ -29,12 +34,17 @@ class MobileHeader extends StatelessWidget {
   final VoidCallback? onAccountTap;
   final Widget? trailing;
 
+  /// The bell. Absent on screens where "what is new" makes no sense.
+  final VoidCallback? onAlerts;
+
+  /// Messages waiting for a reply — shown on the bell, capped at 99+.
+  final int alerts;
+
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 6, 12, 14),
+      padding: const EdgeInsets.fromLTRB(16, 4, 8, 10),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
             child: Column(
@@ -45,45 +55,97 @@ class MobileHeader extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 23),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontSize: 19, height: 1.15, letterSpacing: -0.3),
                 ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 2),
+                if (subtitle != null)
                   Text(
                     subtitle!,
-                    maxLines: 2,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 13.5),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.5, height: 1.25),
                   ),
-                ],
               ],
             ),
           ),
+          if (onAlerts != null) _Bell(count: alerts, onTap: onAlerts!),
           if (trailing != null) trailing!,
-          if (initials != null) ...[
-            const SizedBox(width: 6),
+          if (initials != null)
             InkWell(
               onTap: onAccountTap,
-              borderRadius: BorderRadius.circular(22),
+              customBorder: const CircleBorder(),
               child: Padding(
-                padding: const EdgeInsets.all(4),
+                padding: const EdgeInsets.all(6),
                 child: CircleAvatar(
-                  radius: 18,
+                  radius: 16,
                   backgroundColor: Brand.blueWash,
                   child: Text(
                     initials!,
-                    style: const TextStyle(color: Brand.blue, fontWeight: FontWeight.w700, fontSize: 13),
+                    style: const TextStyle(color: Brand.blue, fontWeight: FontWeight.w700, fontSize: 12.5),
                   ),
                 ),
               ),
             ),
-          ],
         ],
       ),
     );
   }
 }
 
-// ── section label ─────────────────────────────────────────────────────────────
+/// What is new, with the count on it. Quiet when there is nothing.
+class _Bell extends StatelessWidget {
+  const _Bell({required this.count, required this.onTap});
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).textTheme.bodySmall?.color;
+    return InkWell(
+      onTap: onTap,
+      customBorder: const CircleBorder(),
+      child: SizedBox(
+        width: 42,
+        height: 42,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Icon(
+              count > 0 ? Icons.notifications_rounded : Icons.notifications_none_rounded,
+              size: 22,
+              color: count > 0 ? Brand.ink : muted,
+            ),
+            if (count > 0)
+              Positioned(
+                top: 6,
+                right: count > 9 ? 2 : 6,
+                child: Container(
+                  constraints: const BoxConstraints(minWidth: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: Brand.danger,
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 1.5),
+                  ),
+                  child: Text(
+                    count > 99 ? '99+' : '$count',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9.5,
+                      height: 1.25,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class GroupLabel extends StatelessWidget {
   const GroupLabel({super.key, required this.text, this.action, this.onAction});

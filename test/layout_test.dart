@@ -107,17 +107,37 @@ void main() {
         expect(find.text('Chats'), findsOneWidget);
       });
 
-      testWidgets('the header keeps the greeting and the avatar apart', (tester) async {
+      testWidgets('the header fits a greeting, a bell and an avatar on one row', (tester) async {
         await pumpAt(
           tester,
           width,
-          const MobileHeader(
+          MobileHeader(
             title: 'Good afternoon, Emmanuel',
-            subtitle: 'Kilimanjaro Expeditions & Safari · 4 for you',
+            subtitle: 'Kilimanjaro Expeditions & Safari Company · 4 for you',
             initials: 'EM',
+            alerts: 128,
+            onAlerts: () {},
           ),
         );
         expect(find.text('EM'), findsOneWidget);
+        expect(find.text('99+'), findsOneWidget);
+      });
+
+      testWidgets('the whole header stays under 60pt tall', (tester) async {
+        await pumpAt(
+          tester,
+          width,
+          MobileHeader(
+            title: 'Good afternoon, Emmanuel',
+            subtitle: 'Kilimanjaro Expeditions & Safari Company · 4 for you',
+            initials: 'EM',
+            alerts: 3,
+            onAlerts: () {},
+          ),
+        );
+        // Two lines of text plus the controls. Anything taller and the first thing
+        // that needs doing drops below the fold on a small phone.
+        expect(tester.getSize(find.byType(MobileHeader)).height, lessThan(60));
       });
     });
   }

@@ -169,6 +169,14 @@ class HomeScreenState extends State<HomeScreen> {
             subtitle: _subtitle(session.tenantName, attention),
             initials: initialsOf(session.userName),
             onAccountTap: widget.onOpenAccount,
+            // The bell counts customers waiting for a reply and goes straight to
+            // them — yours first if any of them are yours.
+            alerts: _unread(attention),
+            onAlerts: session.can('conversations:read')
+                ? () => widget.onOpenInbox(
+                    filter: attention.any((a) => a['key'] == 'my_unread') ? 'mine' : 'all',
+                  )
+                : null,
           ),
 
           // ── ACT ────────────────────────────────────────────────────────────
@@ -278,6 +286,11 @@ class HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  /// Conversations waiting for a reply, from the same attention model as the rows.
+  static int _unread(List<Map<String, dynamic>> attention) => attention
+      .where((a) => a['key'] == 'my_unread' || a['key'] == 'unread')
+      .fold<int>(0, (sum, a) => sum + (a['count'] as num? ?? 0).toInt());
 
   /// The header names the business and counts what is waiting — one line, always.
   /// Anything longer wraps on a 375pt phone and pushes the real content down.
