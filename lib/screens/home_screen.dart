@@ -5,10 +5,15 @@ import '../core/theme.dart';
 import '../core/workspace.dart';
 import '../widgets/primitives.dart';
 
-/// Home answers three questions, in this order, in one viewport:
-///   1. What needs me?      → attention rows, straight to the work
-///   2. What do I do next?  → one workspace-aware action
-///   3. What happened today? → a single compact line, kept secondary
+/// Home is three questions, in this order, and never more than that:
+///
+///   ACT      — what needs me right now, and why
+///   CONTINUE — what was I in the middle of, as business rather than chatter
+///   OVERVIEW — how is today going, kept quiet at the bottom
+///
+/// Every line on this screen is written by the server: the attention model decides
+/// what is waiting, and the shared next-action resolver decides what state a
+/// customer is in. The phone lays it out; it does not re-derive any of it.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
@@ -65,15 +70,15 @@ class HomeScreenState extends State<HomeScreen> {
     return name.isEmpty ? part : '$part, $name';
   }
 
-  /// Attention items point at filtered work, not at a module.
+  /// Attention rows land on the filtered work they describe, never on a module.
   void _openAttention(Map<String, dynamic> item) {
-    final key = (item['key'] ?? '').toString();
-    switch (key) {
+    switch ((item['key'] ?? '').toString()) {
       case 'my_unread':
         widget.onOpenInbox(filter: 'mine');
-      case 'unread':
       case 'unassigned':
-        widget.onOpenInbox(filter: key == 'unassigned' ? 'unassigned' : 'all');
+        widget.onOpenInbox(filter: 'unassigned');
+      case 'unread':
+        widget.onOpenInbox(filter: 'all');
       case 'my_enquiries':
       case 'new_enquiries':
         widget.onOpenWork(kind: 'enquiry');
@@ -81,12 +86,45 @@ class HomeScreenState extends State<HomeScreen> {
       case 'orders_ready':
         widget.onOpenWork(kind: 'order');
       case 'bookings_unpaid':
+      case 'payments_reported':
+      case 'payments_failed':
+      case 'payments_outstanding':
         widget.onOpenWork(kind: 'booking');
       case 'quotes_waiting':
         widget.onOpenWork(kind: 'quotation');
       default:
         widget.onOpenWork();
     }
+  }
+
+  /// A customer row opens the conversation when there is one; otherwise the record.
+  void _openContinue(Map<String, dynamic> item) {
+    final conversationId = item['conversationId'];
+    if (conversationId != null) {
+      widget.onOpenThread(conversationId.toString());
+      return;
+    }
+    final kind = (item['kind'] ?? '').toString();
+    widget.onOpenWork(kind: kind == 'conversation' ? null : kind);
+  }
+
+  /// Older servers only send the chat-shaped list; read it in the same shape so a
+  /// phone that is ahead of the deployment still shows something sensible.
+  List<Map<String, dynamic>> _continuing(Map<String, dynamic> data) {
+    final fresh = (data['continueWorking'] as List?)?.cast<Map<String, dynamic>>();
+    if (fresh != null) return fresh;
+    return (data['myWork'] as List? ?? const [])
+        .cast<Map<String, dynamic>>()
+        .map(
+          (item) => {
+            'customer': item['title'],
+            'state': (item['kind'] ?? '') == 'conversation' ? 'WhatsApp conversation' : 'Enquiry',
+            'detail': item['detail'],
+            'kind': item['kind'],
+            'conversationId': (item['kind'] ?? '') == 'conversation' ? item['id'] : null,
+          },
+        )
+        .toList();
   }
 
   @override
@@ -105,33 +143,35 @@ class HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    final data = _data ?? const {};
+    final data = _data ?? const <String, dynamic>{};
     final attention = (data['attention'] as List? ?? const []).cast<Map<String, dynamic>>();
-    final context_ = (data['context'] as List? ?? const []).cast<Map<String, dynamic>>();
+    final notes = (data['context'] as List? ?? const []).cast<Map<String, dynamic>>();
     final today = (data['today'] as List? ?? const []).cast<Map<String, dynamic>>();
-    final myWork = (data['myWork'] as List? ?? const []).cast<Map<String, dynamic>>();
+    final continuing = _continuing(data);
     final persona = (data['persona'] ?? 'agent').toString();
     final actions = quickActionsFor(session);
     final primary = actions.where((a) => a.primary).firstOrNull;
 
-    // A brand-new workspace has nothing to show but a great deal to explain.
-    final started = attention.isNotEmpty || myWork.isNotEmpty || today.any((t) => (t['value'] ?? '0') != '0');
+    // A workspace with no history needs teaching, not an empty dashboard.
+    final started =
+        attention.isNotEmpty ||
+        continuing.isNotEmpty ||
+        today.any((t) => (t['value'] ?? '0').toString() != '0');
 
     return RefreshIndicator(
       onRefresh: load,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(bottom: 28),
+        padding: const EdgeInsets.only(bottom: 30),
         children: [
           MobileHeader(
             title: _greeting,
-            subtitle: attention.isEmpty
-                ? '${session.tenantName} · nothing waiting on you'
-                : 'Here’s what needs you at ${session.tenantName}',
+            subtitle: _subtitle(session.tenantName, persona, attention),
             initials: initialsOf(session.userName),
             onAccountTap: widget.onOpenAccount,
           ),
 
+          // ── ACT ────────────────────────────────────────────────────────────
           if (attention.isNotEmpty) ...[
             const GroupLabel(text: 'Needs you'),
             GroupedList(
@@ -139,32 +179,48 @@ class HomeScreenState extends State<HomeScreen> {
                 for (final item in attention) AttentionRow(item: item, onTap: () => _openAttention(item)),
               ],
             ),
-            const SizedBox(height: 16),
           ] else
-            CalmIndicator(
-              text: persona == 'agent'
-                  ? 'You’re caught up — nothing assigned to you is waiting.'
-                  : persona == 'finance'
-                      ? 'No payments are waiting to be checked.'
-                      : 'All caught up.',
-            ),
+            CalmIndicator(text: _calmLine(persona)),
 
-          if (primary != null) ...[
-            const SizedBox(height: 6),
-            NextActionButton(
-              label: primary.label,
-              hint: primary.hint,
-              onTap: () => widget.onQuickAction(primary.key),
-            ),
+          // ── CONTINUE ───────────────────────────────────────────────────────
+          if (continuing.isNotEmpty) ...[
             const SizedBox(height: 18),
+            GroupLabel(text: 'Continue working', action: 'All work', onAction: () => widget.onOpenWork()),
+            GroupedList(
+              children: [
+                for (final item in continuing.take(4))
+                  ContinueRow(item: item, onTap: () => _openContinue(item)),
+              ],
+            ),
           ],
 
+          // One quiet line for the thing you occasionally have to type in yourself.
+          // Everything else that can be created lives on the + button.
+          if (primary != null && started) ...[
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: TextButton.icon(
+                onPressed: () => widget.onQuickAction(primary.key),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: Text(primary.label),
+                style: TextButton.styleFrom(
+                  alignment: Alignment.centerLeft,
+                  minimumSize: const Size(0, 44),
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                ),
+              ),
+            ),
+          ],
+
+          // ── Getting started (only while there is genuinely nothing) ─────────
           if (!started) ...[
+            const SizedBox(height: 14),
             const GroupLabel(text: 'Getting started'),
             GroupedList(
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                  padding: const EdgeInsets.all(14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -174,68 +230,46 @@ class HomeScreenState extends State<HomeScreen> {
                         howWorkArrives(workspaceOf(session.workspace)),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.45),
                       ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (final action in actions)
-                            OutlinedButton.icon(
-                              onPressed: () => widget.onQuickAction(action.key),
-                              icon: Icon(action.icon, size: 17),
-                              label: Text(action.label),
-                              style: OutlinedButton.styleFrom(
-                                minimumSize: const Size(0, 44),
-                                padding: const EdgeInsets.symmetric(horizontal: 14),
+                      if (actions.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final action in actions)
+                              OutlinedButton.icon(
+                                onPressed: () => widget.onQuickAction(action.key),
+                                icon: Icon(action.icon, size: 17),
+                                label: Text(action.label),
+                                style: OutlinedButton.styleFrom(
+                                  minimumSize: const Size(0, 44),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                                ),
                               ),
-                            ),
-                        ],
-                      ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 18),
           ],
 
-          if (myWork.isNotEmpty) ...[
-            GroupLabel(
-              text: 'Continue working',
-              action: 'All',
-              onAction: () => widget.onOpenWork(),
-            ),
-            GroupedList(
-              children: [
-                for (final item in myWork.take(4))
-                  WorkRow(
-                    item: {
-                      ...item,
-                      'customer': item['title'],
-                      'reference': item['detail'],
-                      'statusLabel': (item['unread'] as num? ?? 0) > 0 ? '${item['unread']} unread' : null,
-                    },
-                    onTap: () => (item['kind'] ?? '') == 'conversation'
-                        ? widget.onOpenThread((item['id'] ?? '').toString())
-                        : widget.onOpenWork(kind: 'enquiry'),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 18),
-          ],
-
+          // ── OVERVIEW ───────────────────────────────────────────────────────
           if (today.isNotEmpty) ...[
+            const SizedBox(height: 20),
             const GroupLabel(text: 'Today'),
             CompactStats(tiles: today.take(3).toList()),
           ],
 
-          if (context_.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            for (final item in context_)
+          if (notes.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            for (final note in notes)
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 0, 18, 6),
                 child: Text(
-                  (item['label'] ?? '').toString(),
+                  (note['label'] ?? '').toString(),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.5),
                 ),
               ),
@@ -244,4 +278,23 @@ class HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  /// The header says whose day this is and whether anything is on fire.
+  static String _subtitle(String tenant, String persona, List<Map<String, dynamic>> attention) {
+    if (attention.isEmpty) return '$tenant · nothing waiting on you';
+    final mine = attention.where((a) => a['scope'] == 'mine').length;
+    if (mine > 0) return '$tenant · $mine ${mine == 1 ? 'thing' : 'things'} assigned to you';
+    return switch (persona) {
+      'finance' => '$tenant · money to check',
+      'owner' => '$tenant · what the business needs',
+      _ => '$tenant · what needs you',
+    };
+  }
+
+  static String _calmLine(String persona) => switch (persona) {
+    'agent' => 'You’re caught up — nothing assigned to you is waiting.',
+    'finance' => 'No payments are waiting to be checked.',
+    'viewer' => 'Nothing new to look at.',
+    _ => 'All caught up — nothing is waiting on the business.',
+  };
 }

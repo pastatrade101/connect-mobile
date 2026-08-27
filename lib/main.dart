@@ -21,6 +21,13 @@ Future<void> main() async {
   runApp(const MakutanoApp());
 }
 
+/// Real push if this build has a Firebase project and the device can register;
+/// polling if it cannot. Callers never have to know which one they got.
+Future<void> armAlerts() async {
+  final pushed = await Notifications.instance.connectPush();
+  if (!pushed) Notifications.instance.startWatching();
+}
+
 class MakutanoApp extends StatefulWidget {
   const MakutanoApp({super.key});
 
@@ -36,7 +43,7 @@ class _MakutanoAppState extends State<MakutanoApp> {
   void initState() {
     super.initState();
     _taps = Notifications.instance.onOpenConversation.listen(_openThread);
-    if (Api.instance.signedIn) Notifications.instance.startWatching();
+    if (Api.instance.signedIn) armAlerts();
   }
 
   @override
@@ -52,7 +59,7 @@ class _MakutanoAppState extends State<MakutanoApp> {
   }
 
   void _afterSignIn() {
-    Notifications.instance.startWatching();
+    armAlerts();
     _navigator.currentState?.pushReplacement(MaterialPageRoute<void>(builder: (_) => const Shell()));
   }
 
@@ -89,9 +96,9 @@ class _ShellState extends State<Shell> {
   final _workKey = GlobalKey<WorkScreenState>();
 
   void _openThread(String conversationId) {
-    Navigator.of(context)
-        .push(MaterialPageRoute<void>(builder: (_) => ThreadScreen(conversationId: conversationId)))
-        .then((_) {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => ThreadScreen(conversationId: conversationId))).then((_) {
       _inboxKey.currentState?.load();
       _homeKey.currentState?.load();
     });
@@ -113,7 +120,9 @@ class _ShellState extends State<Shell> {
   void _runAction(String key) {
     switch (key) {
       case 'enquiry':
-        final noun = workspaceOf(Api.instance.session?.workspace ?? '') == Workspace.service ? 'request' : 'enquiry';
+        final noun = workspaceOf(Api.instance.session?.workspace ?? '') == Workspace.service
+            ? 'request'
+            : 'enquiry';
         showModalBottomSheet<void>(
           context: context,
           isScrollControlled: true,
@@ -124,9 +133,9 @@ class _ShellState extends State<Shell> {
           _workKey.currentState?.load();
         });
       case 'order':
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${Api.instance.baseUrl}/app/orders/new')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('${Api.instance.baseUrl}/app/orders/new')));
       case 'inbox':
         _openInbox();
     }
@@ -137,9 +146,9 @@ class _ShellState extends State<Shell> {
     if (session == null) return;
     final actions = quickActionsFor(session);
     if (actions.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Your account cannot create records')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Your account cannot create records')));
       return;
     }
     showModalBottomSheet<void>(
@@ -160,7 +169,7 @@ class _ShellState extends State<Shell> {
       MaterialPageRoute<void>(
         builder: (_) => LoginScreen(
           onSignedIn: () {
-            Notifications.instance.startWatching();
+            armAlerts();
             Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: (_) => const Shell()));
           },
         ),

@@ -49,7 +49,11 @@ class MobileHeader extends StatelessWidget {
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),
-                  Text(subtitle!, maxLines: 2, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 13.5)),
+                  Text(
+                    subtitle!,
+                    maxLines: 2,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 13.5),
+                  ),
                 ],
               ],
             ),
@@ -93,7 +97,10 @@ class GroupLabel extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 0, 12, 8),
       child: Row(
         children: [
-          Text(text.toUpperCase(), style: Theme.of(context).textTheme.labelSmall?.copyWith(letterSpacing: 0.9)),
+          Text(
+            text.toUpperCase(),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(letterSpacing: 0.9),
+          ),
           const Spacer(),
           if (action != null && onAction != null)
             InkWell(
@@ -158,38 +165,173 @@ class AttentionRow extends StatelessWidget {
     final color = urgency == 'critical'
         ? Brand.danger
         : urgency == 'high'
-            ? Brand.warning
-            : Brand.blue;
+        ? Brand.warning
+        : Brand.blue;
     final mine = (item['scope'] ?? '') == 'mine';
+    final count = (item['count'] as num? ?? 0).toInt();
+
+    // The server writes the reason; the count is what is waiting behind it.
+    final why = (item['title'] ?? item['label'] ?? '').toString();
+    final what = (item['detail'] ?? '').toString();
 
     return InkWell(
       onTap: onTap,
       child: Container(
-        constraints: const BoxConstraints(minHeight: 56),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        constraints: const BoxConstraints(minHeight: 62),
+        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
               width: 8,
               height: 8,
-              margin: const EdgeInsets.only(right: 12),
+              margin: const EdgeInsets.only(right: 12, top: 2),
               decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
             Expanded(
-              child: Text(
-                (item['label'] ?? '').toString(),
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, fontSize: 14.5),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          why,
+                          maxLines: 2,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            height: 1.25,
+                          ),
+                        ),
+                      ),
+                      if (mine)
+                        Container(
+                          margin: const EdgeInsets.only(left: 7),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Brand.blueWash,
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: const Text(
+                            'you',
+                            style: TextStyle(color: Brand.blue, fontSize: 10, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                    ],
+                  ),
+                  if (what.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      what,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 13),
+                    ),
+                  ],
+                ],
               ),
             ),
-            if (mine)
+            const SizedBox(width: 10),
+            if (count > 0)
               Container(
-                margin: const EdgeInsets.only(left: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(color: Brand.blueWash, borderRadius: BorderRadius.circular(6)),
-                child: const Text('you', style: TextStyle(color: Brand.blue, fontSize: 10.5, fontWeight: FontWeight.w700)),
+                constraints: const BoxConstraints(minWidth: 26),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: urgency == 'normal' ? 0.10 : 0.13),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$count',
+                  style: TextStyle(color: color, fontSize: 13.5, fontWeight: FontWeight.w700),
+                ),
               ),
-            const SizedBox(width: 6),
             Icon(Icons.chevron_right_rounded, size: 19, color: Theme.of(context).textTheme.bodySmall?.color),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A customer you were already dealing with: who they are, where the business
+/// stands, and the one fact that makes it actionable. Never a chat preview —
+/// the state comes from the lifecycle record behind the conversation.
+class ContinueRow extends StatelessWidget {
+  const ContinueRow({super.key, required this.item, required this.onTap, this.onNext});
+  final Map<String, dynamic> item;
+  final VoidCallback onTap;
+  final VoidCallback? onNext;
+
+  static const _icons = {
+    'enquiry': Icons.help_outline_rounded,
+    'quotation': Icons.request_quote_outlined,
+    'booking': Icons.event_available_outlined,
+    'order': Icons.inventory_2_outlined,
+    'conversation': Icons.forum_outlined,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final kind = (item['kind'] ?? 'conversation').toString();
+    final next = item['next'] as Map<String, dynamic>?;
+    final detail = (item['detail'] ?? '').toString();
+    final muted = Theme.of(context).textTheme.bodySmall?.color;
+
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 72),
+        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(color: Brand.blueWash, borderRadius: BorderRadius.circular(10)),
+              child: Icon(_icons[kind] ?? Icons.forum_outlined, size: 18, color: Brand.blue),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    (item['customer'] ?? '').toString(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, fontSize: 15.5),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    (item['state'] ?? '').toString(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 13, color: muted),
+                  ),
+                  if (detail.isNotEmpty) ...[
+                    const SizedBox(height: 1),
+                    Text(
+                      detail,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.5),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (next != null && onNext != null) ...[
+              const SizedBox(width: 8),
+              NextActionButton(label: next['label'].toString(), onTap: onNext!, dense: true),
+            ] else
+              Icon(Icons.chevron_right_rounded, size: 19, color: muted),
           ],
         ),
       ),
@@ -222,7 +364,13 @@ class CalmIndicator extends StatelessWidget {
 /// The one thing to do, from the server's resolver. Used on Home, on work rows and
 /// after a successful create — so the app never ends a workflow at "done".
 class NextActionButton extends StatelessWidget {
-  const NextActionButton({super.key, required this.label, this.hint, required this.onTap, this.dense = false});
+  const NextActionButton({
+    super.key,
+    required this.label,
+    this.hint,
+    required this.onTap,
+    this.dense = false,
+  });
   final String label;
   final String? hint;
   final VoidCallback onTap;
@@ -260,7 +408,14 @@ class NextActionButton extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(label, style: const TextStyle(color: Colors.white, fontSize: 15.5, fontWeight: FontWeight.w700)),
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       if (hint != null) ...[
                         const SizedBox(height: 2),
                         Text(hint!, style: const TextStyle(color: Color(0xCCFFFFFF), fontSize: 12.5)),
@@ -300,8 +455,7 @@ class CompactStats extends StatelessWidget {
       child: Row(
         children: [
           for (var i = 0; i < tiles.length; i++) ...[
-            if (i > 0)
-              Container(width: 1, height: 26, color: dark ? Brand.darkLine : Brand.line),
+            if (i > 0) Container(width: 1, height: 26, color: dark ? Brand.darkLine : Brand.line),
             Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -310,7 +464,9 @@ class CompactStats extends StatelessWidget {
                     (tiles[i]['value'] ?? '0').toString(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 17, fontWeight: FontWeight.w700),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.copyWith(fontSize: 17, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -376,7 +532,9 @@ class WorkRow extends StatelessWidget {
                     children: [
                       Text(
                         _kindLabel[kind] ?? kind,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10.5, letterSpacing: 0.7),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.labelSmall?.copyWith(fontSize: 10.5, letterSpacing: 0.7),
                       ),
                       if (item['statusLabel'] != null) ...[
                         const SizedBox(width: 6),
@@ -389,10 +547,17 @@ class WorkRow extends StatelessWidget {
                     customer.isEmpty ? reference : customer,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, fontSize: 15),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, fontSize: 15),
                   ),
                   if (customer.isNotEmpty && reference.isNotEmpty)
-                    Text(reference, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall),
+                    Text(
+                      reference,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                 ],
               ),
             ),
@@ -400,7 +565,11 @@ class WorkRow extends StatelessWidget {
               const SizedBox(width: 10),
               NextActionButton(label: next['label'].toString(), onTap: onNext!, dense: true),
             ] else
-              Icon(Icons.chevron_right_rounded, size: 19, color: Theme.of(context).textTheme.bodySmall?.color),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 19,
+                color: Theme.of(context).textTheme.bodySmall?.color,
+              ),
           ],
         ),
       ),
@@ -422,7 +591,10 @@ class StatusChip extends StatelessWidget {
         color: tone.withValues(alpha: dark ? 0.2 : 0.1),
         borderRadius: BorderRadius.circular(5),
       ),
-      child: Text(label, style: TextStyle(color: tone, fontSize: 10.5, fontWeight: FontWeight.w700)),
+      child: Text(
+        label,
+        style: TextStyle(color: tone, fontSize: 10.5, fontWeight: FontWeight.w700),
+      ),
     );
   }
 
@@ -461,7 +633,9 @@ class ActivityRow extends StatelessWidget {
               margin: const EdgeInsets.only(top: 6, right: 11),
               decoration: BoxDecoration(color: Brand.inkFaint.withValues(alpha: 0.5), shape: BoxShape.circle),
             ),
-            Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 14))),
+            Expanded(
+              child: Text(text, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 14)),
+            ),
             const SizedBox(width: 8),
             Text(relativeTime(at), style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11.5)),
           ],
@@ -513,12 +687,19 @@ class TeachingEmptyState extends StatelessWidget {
           const SizedBox(height: 14),
           Text(title, textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 6),
-          Text(body, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.45)),
+          Text(
+            body,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.45),
+          ),
           if (actionLabel != null && onAction != null) ...[
             const SizedBox(height: 18),
             FilledButton(
               onPressed: onAction,
-              style: FilledButton.styleFrom(minimumSize: const Size(0, 46), padding: const EdgeInsets.symmetric(horizontal: 22)),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(0, 46),
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+              ),
               child: Text(actionLabel!),
             ),
           ],

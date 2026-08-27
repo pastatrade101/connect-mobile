@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/api.dart';
 import '../core/notifications.dart';
+import '../main.dart' show armAlerts;
 import '../core/theme.dart';
 import '../core/workspace.dart';
 import '../widgets/primitives.dart';
@@ -42,7 +43,7 @@ class _MoreScreenState extends State<MoreScreen> {
     await prefs.setBool('notifications', value);
     if (value) {
       await Notifications.instance.init();
-      Notifications.instance.startWatching();
+      await armAlerts();
     } else {
       Notifications.instance.stopWatching();
     }
@@ -56,25 +57,35 @@ class _MoreScreenState extends State<MoreScreen> {
 
     // Portal-only destinations, each gated on the permission that governs it.
     final portalLinks = <({String label, String path, IconData icon, bool allowed})>[
-      (label: 'Team', path: '/app/settings/team', icon: Icons.group_outlined, allowed: session.can('members:read')),
-      (label: 'WhatsApp', path: '/app/whatsapp', icon: Icons.chat_outlined, allowed: session.can('whatsapp:read')),
+      (
+        label: 'Team',
+        path: '/app/settings/team',
+        icon: Icons.group_outlined,
+        allowed: session.can('members:read'),
+      ),
+      (
+        label: 'WhatsApp',
+        path: '/app/whatsapp',
+        icon: Icons.chat_outlined,
+        allowed: session.can('whatsapp:read'),
+      ),
       (
         label: 'Message templates',
         path: '/app/whatsapp/templates',
         icon: Icons.description_outlined,
-        allowed: session.can('whatsapp:templates')
+        allowed: session.can('whatsapp:templates'),
       ),
       (
         label: 'Integrations',
         path: '/app/developers',
         icon: Icons.code_rounded,
-        allowed: session.can('api_keys:read')
+        allowed: session.can('api_keys:read'),
       ),
       (
         label: 'Business settings',
         path: '/app/settings',
         icon: Icons.tune_rounded,
-        allowed: session.can('tenant:read')
+        allowed: session.can('tenant:read'),
       ),
     ].where((l) => l.allowed).toList();
 
@@ -95,7 +106,10 @@ class _MoreScreenState extends State<MoreScreen> {
                   style: const TextStyle(color: Brand.blue, fontWeight: FontWeight.w700, fontSize: 15),
                 ),
               ),
-              title: Text(session.userName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15.5)),
+              title: Text(
+                session.userName,
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15.5),
+              ),
               subtitle: Text(session.userEmail, style: Theme.of(context).textTheme.bodySmall),
               trailing: StatusChip(label: _roleLabel(session.role)),
             ),
@@ -109,7 +123,10 @@ class _MoreScreenState extends State<MoreScreen> {
             SwitchListTile(
               value: _alerts,
               onChanged: _setAlerts,
-              title: const Text('New message alerts', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+              title: const Text(
+                'New message alerts',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
               subtitle: Text(
                 'When a chat you hold gets a reply.',
                 style: Theme.of(context).textTheme.bodySmall,
@@ -140,9 +157,9 @@ class _MoreScreenState extends State<MoreScreen> {
                   leading: Icon(link.icon, size: 20, color: Theme.of(context).textTheme.bodySmall?.color),
                   title: Text(link.label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                   trailing: const Icon(Icons.north_east_rounded, size: 16),
-                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('${Api.instance.baseUrl}${link.path}')),
-                  ),
+                  onTap: () => ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('${Api.instance.baseUrl}${link.path}'))),
                 ),
             ],
           ),
@@ -188,20 +205,20 @@ class _MoreScreenState extends State<MoreScreen> {
   }
 
   static String _roleLabel(String role) => switch (role) {
-        'OWNER' => 'Owner',
-        'ADMIN' => 'Admin',
-        'BOOKING_AGENT' => 'Manager',
-        'SALES' => 'Agent',
-        'VIEWER' => 'Viewer',
-        _ => role,
-      };
+    'OWNER' => 'Owner',
+    'ADMIN' => 'Admin',
+    'BOOKING_AGENT' => 'Manager',
+    'SALES' => 'Agent',
+    'VIEWER' => 'Viewer',
+    _ => role,
+  };
 
   static String _workspaceLabel(Workspace workspace) => switch (workspace) {
-        Workspace.bookings => 'Bookings & enquiries',
-        Workspace.orders => 'Customer orders',
-        Workspace.service => 'Enquiries & quotations',
-        Workspace.hybrid => 'Bookings and orders',
-      };
+    Workspace.bookings => 'Bookings & enquiries',
+    Workspace.orders => 'Customer orders',
+    Workspace.service => 'Enquiries & quotations',
+    Workspace.hybrid => 'Bookings and orders',
+  };
 }
 
 class _Row extends StatelessWidget {
@@ -223,7 +240,9 @@ class _Row extends StatelessWidget {
               textAlign: TextAlign.right,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, fontSize: 14.5),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, fontSize: 14.5),
             ),
           ),
         ],

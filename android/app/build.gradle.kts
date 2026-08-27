@@ -48,3 +48,12 @@ flutter {
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
+
+// Firebase, if this build has been given a project. `google-services.json` is not in
+// version control (it identifies one Firebase project, and a fork should use its own),
+// so applying the plugin unconditionally would break every build that lacks the file.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+} else {
+    logger.lifecycle("android/app/google-services.json is absent — building without push.")
+}

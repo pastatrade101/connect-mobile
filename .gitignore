@@ -9,3 +9,8 @@ android/.gradle/
 android/local.properties
 *.iml
 .DS_Store
+
+# Firebase project identity — supplied per deployment, never committed.
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+lib/firebase_options.dart

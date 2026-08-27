@@ -1,23 +1,32 @@
 import 'dart:async';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'api.dart';
 
+/// Android hands a background message to a fresh isolate, so this has to be a
+/// top-level function. Nothing to do here: the system tray already shows the
+/// notification Firebase delivered — this only keeps the plugin happy.
+@pragma('vm:entry-point')
+Future<void> _onBackgroundMessage(RemoteMessage message) async {}
+
 /// Getting told, without opening the app.
 ///
 /// Two halves, deliberately separable:
 ///
-///   • The SERVER already sends Firebase messages to whoever holds a thread (see
-///     `push.ts` in Connect). Add `firebase_messaging` plus this project's
-///     google-services.json and call [Notifications.instance.attachPushToken] with
-///     the FCM token — the backend endpoint for it already exists.
+///   • PUSH — the server sends Firebase messages to whoever holds a thread (see
+///     `push.ts` in Connect). [connectPush] asks Firebase for this device's token
+///     and registers it against the account. It needs the Firebase config files to
+///     be present (google-services.json / GoogleService-Info.plist); without them
+///     Firebase refuses to start and we say so quietly rather than crashing.
 ///
-///   • Until then this watcher polls the inbox while the app is alive and raises a
-///     real system notification for anything new. It is the honest fallback: it
-///     works today, it costs one small request a minute, and it disappears the
-///     moment a real push token is attached.
+///   • POLLING — the honest fallback while the app is open: one small request a
+///     minute, raising a real system notification for anything new. It stops the
+///     moment a push token is registered, and covers the iOS Simulator, which can
+///     never receive a real remote notification.
 class Notifications {
   Notifications._();
   static final Notifications instance = Notifications._();
@@ -49,16 +58,88 @@ class Notifications {
     );
 
     // Android 13+ asks; older versions grant at install.
-    await _plugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission();
+    final android_ = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    await android_?.requestNotificationsPermission();
+    // The server addresses pushes to this channel by name, so it must exist before
+    // the first one arrives — Android silently drops notifications for unknown ones.
+    await android_?.createNotificationChannel(
+      const AndroidNotificationChannel(
+        'makutano_inbox',
+        'Inbox',
+        description: 'New WhatsApp messages assigned to you',
+        importance: Importance.high,
+      ),
+    );
     _ready = true;
   }
 
-  /// Wire a real FCM token to the account. Safe to call more than once.
-  Future<void> attachPushToken(String token, {String platform = 'android', String? deviceName}) async {
+  /// Ask Firebase for this device's address and give it to Connect.
+  ///
+  /// Everything here is best-effort by design: a missing Firebase project, a
+  /// declined permission prompt or a simulator with no APNs registration all end
+  /// the same way — polling keeps working and nobody sees an error.
+  Future<bool> connectPush() async {
+    if (_pushAttached) return true;
+    if (!Api.instance.signedIn) return false;
     try {
-      await Api.instance.registerDevice(token, platform: platform, deviceName: deviceName);
+      if (Firebase.apps.isEmpty) await Firebase.initializeApp();
+    } catch (error) {
+      debugPrint('[notifications] no Firebase project on this build: $error');
+      return false;
+    }
+    try {
+      final messaging = FirebaseMessaging.instance;
+      final settings = await messaging.requestPermission();
+      if (settings.authorizationStatus == AuthorizationStatus.denied) {
+        debugPrint('[notifications] push permission declined');
+        return false;
+      }
+      FirebaseMessaging.onBackgroundMessage(_onBackgroundMessage);
+      // iOS hands out an FCM token only once APNs has registered the device; the
+      // Simulator never does, so this stays null there and polling carries on.
+      final token = await messaging.getToken();
+      if (token == null || token.isEmpty) return false;
+
+      // A foreground message would otherwise be swallowed, so show it ourselves.
+      FirebaseMessaging.onMessage.listen((message) {
+        final notification = message.notification;
+        if (notification == null) return;
+        unawaited(
+          _show(
+            title: notification.title ?? 'Makutano Connect',
+            body: notification.body ?? '',
+            conversationId: (message.data['conversationId'] ?? '').toString(),
+          ),
+        );
+      });
+      // Tapped from the tray, either while running or from cold.
+      FirebaseMessaging.onMessageOpenedApp.listen(_routeFrom);
+      final launch = await messaging.getInitialMessage();
+      if (launch != null) _routeFrom(launch);
+      // Tokens rotate; the account has to follow.
+      messaging.onTokenRefresh.listen((next) {
+        unawaited(attachPushToken(next, platform: _platform));
+      });
+
+      await attachPushToken(token, platform: _platform);
+      return _pushAttached;
+    } catch (error) {
+      debugPrint('[notifications] push unavailable: $error');
+      return false;
+    }
+  }
+
+  void _routeFrom(RemoteMessage message) {
+    final id = (message.data['conversationId'] ?? '').toString();
+    if (id.isNotEmpty) _tapped.add(id);
+  }
+
+  String get _platform => defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
+
+  /// Wire a real FCM token to the account. Safe to call more than once.
+  Future<void> attachPushToken(String token, {String? platform, String? deviceName}) async {
+    try {
+      await Api.instance.registerDevice(token, platform: platform ?? _platform, deviceName: deviceName);
       _pushAttached = true;
       stopWatching(); // the server takes over from here
     } catch (error) {
