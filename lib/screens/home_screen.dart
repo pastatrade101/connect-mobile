@@ -166,7 +166,7 @@ class HomeScreenState extends State<HomeScreen> {
         children: [
           MobileHeader(
             title: _greeting,
-            subtitle: _subtitle(session.tenantName, persona, attention),
+            subtitle: _subtitle(session.tenantName, attention),
             initials: initialsOf(session.userName),
             onAccountTap: widget.onOpenAccount,
           ),
@@ -279,16 +279,13 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// The header says whose day this is and whether anything is on fire.
-  static String _subtitle(String tenant, String persona, List<Map<String, dynamic>> attention) {
-    if (attention.isEmpty) return '$tenant · nothing waiting on you';
+  /// The header names the business and counts what is waiting — one line, always.
+  /// Anything longer wraps on a 375pt phone and pushes the real content down.
+  static String _subtitle(String tenant, List<Map<String, dynamic>> attention) {
+    if (attention.isEmpty) return '$tenant · all clear';
     final mine = attention.where((a) => a['scope'] == 'mine').length;
-    if (mine > 0) return '$tenant · $mine ${mine == 1 ? 'thing' : 'things'} assigned to you';
-    return switch (persona) {
-      'finance' => '$tenant · money to check',
-      'owner' => '$tenant · what the business needs',
-      _ => '$tenant · what needs you',
-    };
+    if (mine > 0) return '$tenant · $mine for you';
+    return '$tenant · ${attention.length} waiting';
   }
 
   static String _calmLine(String persona) => switch (persona) {
