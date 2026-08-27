@@ -114,7 +114,9 @@ class _Bell extends StatelessWidget {
             Icon(
               count > 0 ? Icons.notifications_rounded : Icons.notifications_none_rounded,
               size: 22,
-              color: count > 0 ? Brand.ink : muted,
+              color: count > 0
+                  ? (Theme.of(context).brightness == Brightness.dark ? Brand.darkInk : Brand.ink)
+                  : muted,
             ),
             if (count > 0)
               Positioned(
