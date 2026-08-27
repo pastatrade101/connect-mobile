@@ -16,6 +16,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   firebase_core: ^4.14.0
   firebase_messaging: ^16.6.0
+  flutter_animate: ^4.5.2
+  rive: ^0.14.11
 
 dev_dependencies:
   flutter_test:
@@ -37,3 +39,6 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo.png
+    # Optional Rive artwork. The folder is declared so a .riv dropped in here is
+    # picked up without touching pubspec; RiveArt falls back when it is empty.
+    - assets/rive/

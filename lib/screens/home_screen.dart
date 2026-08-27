@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/api.dart';
+import '../core/motion.dart';
 import '../core/theme.dart';
 import '../core/workspace.dart';
 import '../widgets/primitives.dart';
@@ -181,17 +182,17 @@ class HomeScreenState extends State<HomeScreen> {
 
           // ── OVERVIEW ───────────────────────────────────────────────────────
           // How the day is going, at a glance, before anything asks for a decision.
-          if (today.isNotEmpty) TodayCard(tiles: today, currency: session.currency),
+          if (today.isNotEmpty) TodayCard(tiles: today, currency: session.currency).entrance(),
           if (today.isNotEmpty) const SizedBox(height: 14),
 
           // ── ACT ────────────────────────────────────────────────────────────
           if (attention.isNotEmpty) ...[
-            const GroupLabel(text: 'Needs you'),
+            const GroupLabel(text: 'Needs you').entrance(index: 1),
             GroupedList(
               children: [
                 for (final item in attention) AttentionRow(item: item, onTap: () => _openAttention(item)),
               ],
-            ),
+            ).entrance(index: 2),
           ] else
             CalmIndicator(text: _calmLine(persona)),
 

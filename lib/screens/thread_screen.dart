@@ -109,15 +109,19 @@ class _ThreadScreenState extends State<ThreadScreen> {
         backgroundColor: dark ? Brand.darkPanel : Brand.chatBar,
         title: Row(
           children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: dark ? Brand.darkLine : const Color(0xFFDFE5E7),
-              child: Text(
-                initialsOf(name),
-                style: TextStyle(
-                  color: dark ? Brand.darkInk : const Color(0xFF54656F),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
+            // Lands the avatar that flew in from the inbox row.
+            Hero(
+              tag: 'customer-${widget.conversationId}',
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: dark ? Brand.darkLine : const Color(0xFFDFE5E7),
+                child: Text(
+                  initialsOf(name),
+                  style: TextStyle(
+                    color: dark ? Brand.darkInk : const Color(0xFF54656F),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
                 ),
               ),
             ),

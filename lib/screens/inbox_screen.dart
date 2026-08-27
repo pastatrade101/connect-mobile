@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../core/api.dart';
+import '../core/motion.dart';
 import '../core/theme.dart';
 import '../widgets/primitives.dart';
+import '../widgets/rive_art.dart';
 
 /// The chat list. Same three filters as the portal, same meaning: "You:" is who
 /// spoke last, the chip on the right is who owns the thread.
@@ -161,9 +163,12 @@ class InboxScreenState extends State<InboxScreen> {
                     itemCount: _visible.length,
                     separatorBuilder: (_, __) => const Divider(height: 1, indent: 76),
                     itemBuilder: (context, i) => _ThreadTile(
+                      // Keyed by conversation so a refresh does not replay the whole
+                      // list — only genuinely new rows animate in.
+                      key: ValueKey(_visible[i]['id']),
                       thread: _visible[i],
                       onTap: () => widget.onOpenThread((_visible[i]['id'] ?? '').toString()),
-                    ),
+                    ).entrance(index: i.clamp(0, 8)),
                   ),
                 ),
         ),
@@ -205,7 +210,7 @@ class _FilterChip extends StatelessWidget {
 }
 
 class _ThreadTile extends StatelessWidget {
-  const _ThreadTile({required this.thread, required this.onTap});
+  const _ThreadTile({super.key, required this.thread, required this.onTap});
   final Map<String, dynamic> thread;
   final VoidCallback onTap;
 
@@ -221,12 +226,17 @@ class _ThreadTile extends StatelessWidget {
     return ListTile(
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      leading: CircleAvatar(
-        radius: 24,
-        backgroundColor: Tone.blueWash(context),
-        child: Text(
-          initialsOf(name),
-          style: TextStyle(color: Tone.blue(context), fontWeight: FontWeight.w700, fontSize: 15),
+      // The same avatar continues into the conversation, so the eye keeps hold
+      // of who it is across the screen change.
+      leading: Hero(
+        tag: 'customer-${thread['id']}',
+        child: CircleAvatar(
+          radius: 24,
+          backgroundColor: Tone.blueWash(context),
+          child: Text(
+            initialsOf(name),
+            style: TextStyle(color: Tone.blue(context), fontWeight: FontWeight.w700, fontSize: 15),
+          ),
         ),
       ),
       title: Row(
@@ -322,7 +332,11 @@ class _InboxMessage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 36, color: Tone.muted(context)),
+            RiveArt(
+              name: 'empty_inbox',
+              size: 92,
+              fallback: Icon(icon, size: 36, color: Tone.muted(context)).breathe(),
+            ),
             const SizedBox(height: 14),
             Text(title, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 6),

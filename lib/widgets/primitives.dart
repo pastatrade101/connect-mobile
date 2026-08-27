@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../core/motion.dart';
 import '../core/theme.dart';
 
 /// The building blocks every screen is made of.
@@ -238,7 +239,7 @@ class AttentionRow extends StatelessWidget {
     final why = (item['title'] ?? item['label'] ?? '').toString();
     final what = (item['detail'] ?? '').toString();
 
-    return InkWell(
+    return PressableRow(
       onTap: onTap,
       child: Container(
         constraints: const BoxConstraints(minHeight: 62),
@@ -314,7 +315,7 @@ class AttentionRow extends StatelessWidget {
                 child: Text(
                   '$count',
                   style: TextStyle(color: color, fontSize: 13.5, fontWeight: FontWeight.w700),
-                ),
+                ).pop(),
               ),
             Icon(Icons.chevron_right_rounded, size: 19, color: Theme.of(context).textTheme.bodySmall?.color),
           ],
@@ -348,7 +349,7 @@ class ContinueRow extends StatelessWidget {
     final detail = (item['detail'] ?? '').toString();
     final muted = Theme.of(context).textTheme.bodySmall?.color;
 
-    return InkWell(
+    return PressableRow(
       onTap: onTap,
       child: Container(
         constraints: const BoxConstraints(minHeight: 72),
@@ -729,7 +730,7 @@ class WorkRow extends StatelessWidget {
     final customer = (item['customer'] ?? item['title'] ?? '').toString();
     final reference = (item['reference'] ?? item['detail'] ?? '').toString();
 
-    return InkWell(
+    return PressableRow(
       onTap: onTap,
       child: Container(
         constraints: const BoxConstraints(minHeight: 60),
@@ -899,7 +900,7 @@ class TeachingEmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 32, color: Tone.muted(context)),
+          Icon(icon, size: 32, color: Tone.muted(context)).breathe(),
           const SizedBox(height: 14),
           Text(title, textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 6),

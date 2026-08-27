@@ -131,6 +131,16 @@ ThemeData buildTheme({required Brightness brightness}) {
 
   return base.copyWith(
     scaffoldBackgroundColor: dark ? Brand.darkGround : Brand.ground,
+    // One transition for the whole app, on both platforms, so a pushed screen
+    // always arrives the same way. iOS keeps its edge-swipe back gesture; Android
+    // stops using the old bottom-up slide, which reads as slow next to it.
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.android: _FadeThroughTransitions(),
+        TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+      },
+    ),
     appBarTheme: AppBarTheme(
       backgroundColor: dark ? Brand.darkSurface : Brand.surface,
       foregroundColor: onGround,
@@ -232,4 +242,29 @@ String initialsOf(String name) {
   final parts = name.trim().replaceAll(RegExp(r'^\+'), '').split(RegExp(r'\s+'));
   final letters = parts.where((p) => p.isNotEmpty).map((p) => p[0]).take(2).join();
   return letters.isEmpty ? '#' : letters.toUpperCase();
+}
+
+/// A push that fades forward and lifts slightly, rather than sliding a whole
+/// screen across. Short on purpose: 220ms is about the point where a transition
+/// stops feeling like polish and starts feeling like waiting.
+class _FadeThroughTransitions extends PageTransitionsBuilder {
+  const _FadeThroughTransitions();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+    return FadeTransition(
+      opacity: curved,
+      child: SlideTransition(
+        position: Tween(begin: const Offset(0, 0.035), end: Offset.zero).animate(curved),
+        child: child,
+      ),
+    );
+  }
 }
