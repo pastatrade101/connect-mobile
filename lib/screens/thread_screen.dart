@@ -184,8 +184,10 @@ class _ThreadScreenState extends State<ThreadScreen> {
                         child: ListView.builder(
                           controller: _scroll,
                           physics: const AlwaysScrollableScrollPhysics(),
-                          // Room for the floating composer, so the last message clears it.
-                          padding: const EdgeInsets.fromLTRB(12, 14, 12, 92),
+                          // Room for the floating composer, measured against its
+                          // real height rather than guessed: field + padding +
+                          // the home indicator underneath it.
+                          padding: const EdgeInsets.fromLTRB(12, 14, 12, 124),
                           itemCount: _messages.length,
                           itemBuilder: (context, i) => _Bubble(message: _messages[i]),
                         ),
@@ -331,7 +333,9 @@ class _Composer extends StatelessWidget {
                 ),
                 padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                  // Centre, not bottom: with a single line of text a
+                  // bottom-aligned button reads as if it has slipped.
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(
                       child: TextField(
@@ -371,7 +375,12 @@ class _Composer extends StatelessWidget {
                                 width: 18,
                                 child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                               )
-                            : const Icon(Icons.send_rounded, size: 19, color: Colors.white),
+                            // The glyph carries whitespace on its right, so it
+                            // needs a nudge to look centred rather than measure it.
+                            : const Padding(
+                                padding: EdgeInsets.only(left: 2),
+                                child: Icon(Icons.send_rounded, size: 20, color: Colors.white),
+                              ),
                       ),
                     ),
                   ],

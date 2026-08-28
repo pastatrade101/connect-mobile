@@ -264,8 +264,8 @@ class _ShellState extends State<Shell> {
                       child: GestureDetector(
                         onTap: _openQuickCreate,
                         child: Container(
-                          width: 46,
-                          height: 40,
+                          width: 50,
+                          height: 44,
                           decoration: BoxDecoration(
                             color: Tone.blue(context),
                             borderRadius: BorderRadius.circular(14),
@@ -277,7 +277,7 @@ class _ShellState extends State<Shell> {
                               ),
                             ],
                           ),
-                          child: const Icon(Icons.add_rounded, color: Colors.white, size: 24),
+                          child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
                         ),
                       ),
                     ),
@@ -317,6 +317,8 @@ class _NavItem extends StatelessWidget {
 
   final IconData icon;
   final IconData activeIcon;
+
+  /// Not drawn — kept for the semantics label, so the tab is still announced.
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -326,42 +328,26 @@ class _NavItem extends StatelessWidget {
     final muted = Theme.of(context).textTheme.bodySmall?.color;
     final accent = Tone.blue(context);
 
-    // The selected tab takes twice the width, because it is the only one carrying
-    // a word. Splitting five slots equally left the label a few pixels short and
-    // clipped it — and a nav that overflows is worse than one without labels.
+    // Equal flex on all four is what centres the + button: two tabs each side of
+    // it, so the middle of the row and the middle of the bar are the same point.
     return Expanded(
-      flex: selected ? 2 : 1,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: Center(
-          // The selected tab wears the colour, so where you are is legible at a
-          // glance rather than from a two-pixel tint on an icon.
-          child: AnimatedContainer(
-            duration: Motion.quick,
-            curve: Curves.easeOut,
-            padding: EdgeInsets.symmetric(horizontal: selected ? 12 : 6, vertical: 7),
-            decoration: BoxDecoration(
-              color: selected ? Tone.wash(context, accent) : Colors.transparent,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            // A last guard: a longer label in another language shrinks rather
-            // than overflowing.
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(selected ? activeIcon : icon, size: 21, color: selected ? accent : muted),
-                  if (selected) ...[
-                    const SizedBox(width: 6),
-                    Text(
-                      label,
-                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: accent),
-                    ),
-                  ],
-                ],
+      child: Semantics(
+        label: label,
+        selected: selected,
+        button: true,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: Center(
+            child: AnimatedContainer(
+              duration: Motion.quick,
+              curve: Curves.easeOut,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: selected ? Tone.wash(context, accent) : Colors.transparent,
+                borderRadius: BorderRadius.circular(14),
               ),
+              child: Icon(selected ? activeIcon : icon, size: 26, color: selected ? accent : muted),
             ),
           ),
         ),
