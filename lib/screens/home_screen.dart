@@ -5,6 +5,7 @@ import '../core/motion.dart';
 import '../core/theme.dart';
 import '../core/workspace.dart';
 import '../widgets/primitives.dart';
+import '../widgets/skeleton.dart';
 
 /// Home is three questions, in this order, and never more than that:
 ///
@@ -131,7 +132,7 @@ class HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final session = Api.instance.session;
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return const SkeletonHome();
     if (_error != null || session == null) {
       return Center(
         child: TeachingEmptyState(

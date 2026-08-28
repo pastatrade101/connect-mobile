@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../core/api.dart';
 import '../core/theme.dart';
+import '../widgets/skeleton.dart';
 
 /// One conversation, WhatsApp-shaped: tinted canvas, bubbles with the tail on the
 /// right for what we sent, and a composer pinned to the bottom above the keyboard.
@@ -167,7 +168,7 @@ class _ThreadScreenState extends State<ThreadScreen> {
                 ),
               Expanded(
                 child: _loading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const SkeletonThread()
                     : _error != null
                     ? Center(
                         child: Padding(
@@ -246,11 +247,7 @@ class _Bubble extends StatelessWidget {
           children: [
             Text(
               (message['text'] ?? '').toString(),
-              style: TextStyle(
-                fontSize: 15,
-                height: 1.35,
-                color: dark ? Brand.darkInk : const Color(0xFF111B21),
-              ),
+              style: TextStyle(fontSize: 15, height: 1.35, color: dark ? Brand.darkInk : const Color(0xFF111B21)),
             ),
             const SizedBox(height: 3),
             Row(
@@ -263,9 +260,7 @@ class _Bubble extends StatelessWidget {
                 if (outbound) ...[
                   const SizedBox(width: 4),
                   Icon(
-                    (message['status'] ?? '') == 'FAILED'
-                        ? Icons.error_outline_rounded
-                        : Icons.done_all_rounded,
+                    (message['status'] ?? '') == 'FAILED' ? Icons.error_outline_rounded : Icons.done_all_rounded,
                     size: 14,
                     color: (message['status'] ?? '') == 'FAILED'
                         ? Tone.danger(context)

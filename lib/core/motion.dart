@@ -32,29 +32,22 @@ class Motion {
 /// Something arriving on screen: fade up, once.
 extension EntranceAnimation on Widget {
   Widget entrance({int index = 0, Duration? delay}) => animate()
-      .fadeIn(
-        duration: Motion.enter,
-        delay: delay ?? Motion.stagger * index,
-        curve: Motion.curve,
-      )
+      .fadeIn(duration: Motion.enter, delay: delay ?? Motion.stagger * index, curve: Motion.curve)
       .moveY(begin: Motion.rise, end: 0, duration: Motion.enter, curve: Motion.curve);
 
   /// For a number or badge that has just changed — a small pop, no bounce.
   Widget pop() => animate().scale(
-        begin: const Offset(0.86, 0.86),
-        end: const Offset(1, 1),
-        duration: Motion.quick,
-        curve: Curves.easeOutBack,
-      );
+    begin: const Offset(0.86, 0.86),
+    end: const Offset(1, 1),
+    duration: Motion.quick,
+    curve: Curves.easeOutBack,
+  );
 
   /// A quiet, endless breath for empty states, so a screen with nothing on it
   /// still looks alive rather than broken.
-  Widget breathe() => animate(onPlay: (c) => c.repeat(reverse: true)).scaleXY(
-        begin: 1,
-        end: 1.04,
-        duration: const Duration(milliseconds: 1900),
-        curve: Curves.easeInOut,
-      );
+  Widget breathe() => animate(
+    onPlay: (c) => c.repeat(reverse: true),
+  ).scaleXY(begin: 1, end: 1.04, duration: const Duration(milliseconds: 1900), curve: Curves.easeInOut);
 }
 
 /// A row that acknowledges a finger before its screen has loaded.

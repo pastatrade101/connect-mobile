@@ -207,12 +207,7 @@ ThemeData buildTheme({required Brightness brightness}) {
       elevation: 0,
       scrolledUnderElevation: 0.5,
       centerTitle: false,
-      titleTextStyle: TextStyle(
-        color: onGround,
-        fontSize: 18,
-        fontWeight: FontWeight.w700,
-        letterSpacing: -0.3,
-      ),
+      titleTextStyle: TextStyle(color: onGround, fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: -0.3),
       systemOverlayStyle: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
     ),
     cardTheme: CardThemeData(
@@ -228,21 +223,11 @@ ThemeData buildTheme({required Brightness brightness}) {
     textTheme: base.textTheme
         .apply(bodyColor: onGround, displayColor: onGround)
         .copyWith(
-          titleLarge: TextStyle(
-            color: onGround,
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.4,
-          ),
+          titleLarge: TextStyle(color: onGround, fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.4),
           titleMedium: TextStyle(color: onGround, fontSize: 16, fontWeight: FontWeight.w600),
           bodyMedium: TextStyle(color: onGround, fontSize: 15, height: 1.4),
           bodySmall: TextStyle(color: muted, fontSize: 13, height: 1.35),
-          labelSmall: TextStyle(
-            color: muted,
-            fontSize: 11.5,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.6,
-          ),
+          labelSmall: TextStyle(color: muted, fontSize: 11.5, fontWeight: FontWeight.w600, letterSpacing: 0.6),
         ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
@@ -283,9 +268,7 @@ ThemeData buildTheme({required Brightness brightness}) {
       backgroundColor: dark ? Brand.darkSurface : Brand.surface,
       indicatorColor: dark ? Brand.darkBlueWash : Brand.blueWash,
       height: 64,
-      labelTextStyle: WidgetStatePropertyAll(
-        TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: muted),
-      ),
+      labelTextStyle: WidgetStatePropertyAll(TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: muted)),
       elevation: 0,
     ),
     snackBarTheme: SnackBarThemeData(

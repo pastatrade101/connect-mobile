@@ -7,6 +7,7 @@ import '../main.dart' show armAlerts;
 import '../core/theme.dart';
 import '../core/workspace.dart';
 import '../widgets/primitives.dart';
+import '../widgets/skeleton.dart';
 
 /// The things you need occasionally: account, alerts, and the configuration that
 /// genuinely belongs on a bigger screen. Nothing appears here that this person's
@@ -53,7 +54,9 @@ class _MoreScreenState extends State<MoreScreen> {
   @override
   Widget build(BuildContext context) {
     final session = Api.instance.session;
-    if (_loading || session == null) return const Center(child: CircularProgressIndicator());
+    if (_loading || session == null) {
+      return const Padding(padding: EdgeInsets.only(top: 16), child: SkeletonRows(rows: 6, disc: false));
+    }
 
     // Portal-only destinations, each gated on the permission that governs it.
     final portalLinks = <({String label, String path, IconData icon, bool allowed})>[

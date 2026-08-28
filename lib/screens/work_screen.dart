@@ -4,6 +4,7 @@ import '../core/api.dart';
 import '../core/theme.dart';
 import '../core/workspace.dart';
 import '../widgets/primitives.dart';
+import '../widgets/skeleton.dart';
 
 /// Everything in flight, grouped by what it is — and each row carries the step the
 /// server says comes next, so nobody has to work out which module to open.
@@ -113,9 +114,7 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
                     height: 46,
                     child: _TabLabel(
                       label: tab.label,
-                      count: tab.kind == null
-                          ? _items.length
-                          : _items.where((i) => i['kind'] == tab.kind).length,
+                      count: tab.kind == null ? _items.length : _items.where((i) => i['kind'] == tab.kind).length,
                     ),
                   ),
               ],
@@ -123,7 +122,7 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
           ),
         Expanded(
           child: _loading
-              ? const Center(child: CircularProgressIndicator())
+              ? const SkeletonRows(rows: 5)
               : _error != null
               ? Center(
                   child: TeachingEmptyState(
@@ -136,10 +135,7 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
                 )
               // Swiping sideways moves between tabs — the gesture people already
               // expect from every other tabbed app on the phone.
-              : TabBarView(
-                  controller: _controller,
-                  children: [for (final tab in _tabs) _page(session, tab.kind)],
-                ),
+              : TabBarView(controller: _controller, children: [for (final tab in _tabs) _page(session, tab.kind)]),
         ),
       ],
     );
@@ -204,10 +200,7 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
             children: [
               Row(
                 children: [
-                  Text(
-                    (item['reference'] ?? '').toString(),
-                    style: Theme.of(sheetContext).textTheme.titleMedium,
-                  ),
+                  Text((item['reference'] ?? '').toString(), style: Theme.of(sheetContext).textTheme.titleMedium),
                   const SizedBox(width: 8),
                   if (item['statusLabel'] != null) StatusChip(label: item['statusLabel'].toString()),
                 ],
@@ -224,11 +217,7 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
                     const SizedBox(width: 6),
                     Text(
                       'Outstanding ${item['currency']} ${item['outstanding']}',
-                      style: TextStyle(
-                        color: Tone.warning(context),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13.5,
-                      ),
+                      style: TextStyle(color: Tone.warning(context), fontWeight: FontWeight.w600, fontSize: 13.5),
                     ),
                   ],
                 ),
@@ -243,9 +232,9 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
                 FilledButton(
                   onPressed: () {
                     Navigator.pop(sheetContext);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('${next['label']} — finish this in the portal for now')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('${next['label']} — finish this in the portal for now')));
                   },
                   child: Text(next['label'].toString()),
                 ),
@@ -280,9 +269,7 @@ class _TabLabel extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
             decoration: BoxDecoration(
-              color: selected
-                  ? Tone.blueWash(context)
-                  : Theme.of(context).dividerColor.withValues(alpha: 0.35),
+              color: selected ? Tone.blueWash(context) : Theme.of(context).dividerColor.withValues(alpha: 0.35),
               borderRadius: BorderRadius.circular(7),
             ),
             child: Text(

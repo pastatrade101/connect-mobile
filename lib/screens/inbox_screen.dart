@@ -5,6 +5,7 @@ import '../core/api.dart';
 import '../core/motion.dart';
 import '../core/theme.dart';
 import '../widgets/primitives.dart';
+import '../widgets/skeleton.dart';
 import '../widgets/rive_art.dart';
 
 /// The chat list. Same three filters as the portal, same meaning: "You:" is who
@@ -86,11 +87,7 @@ class InboxScreenState extends State<InboxScreen> {
           subtitle: _threads.isEmpty
               ? 'Conversations appear as customers write in'
               : '${_threads.where((t) => (t['unread'] as num? ?? 0) > 0).length} waiting for a reply',
-          trailing: IconButton(
-            tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh_rounded, size: 20),
-            onPressed: load,
-          ),
+          trailing: IconButton(tooltip: 'Refresh', icon: const Icon(Icons.refresh_rounded, size: 20), onPressed: load),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
@@ -139,13 +136,9 @@ class InboxScreenState extends State<InboxScreen> {
         ),
         Expanded(
           child: _loading
-              ? const Center(child: CircularProgressIndicator())
+              ? const SkeletonRows(rows: 6)
               : _error != null
-              ? _InboxMessage(
-                  icon: Icons.cloud_off_rounded,
-                  title: 'Could not load your chats',
-                  body: _error!,
-                )
+              ? _InboxMessage(icon: Icons.cloud_off_rounded, title: 'Could not load your chats', body: _error!)
               : _visible.isEmpty
               ? _InboxMessage(
                   icon: Icons.forum_outlined,
@@ -254,10 +247,7 @@ class _ThreadTile extends StatelessWidget {
               ),
             ),
           ),
-          Text(
-            _when(thread['lastMessageAt']),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11.5),
-          ),
+          Text(_when(thread['lastMessageAt']), style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11.5)),
         ],
       ),
       subtitle: Padding(
@@ -293,10 +283,7 @@ class _ThreadTile extends StatelessWidget {
               Container(
                 margin: const EdgeInsets.only(left: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF25D366),
-                  borderRadius: BorderRadius.circular(20),
-                ),
+                decoration: BoxDecoration(color: const Color(0xFF25D366), borderRadius: BorderRadius.circular(20)),
                 child: Text(
                   '$unread',
                   style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),

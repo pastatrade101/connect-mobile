@@ -65,12 +65,7 @@ List<QuickAction> quickActionsFor(Session session) {
   }
   if (session.can('conversations:read')) {
     actions.add(
-      const QuickAction(
-        key: 'inbox',
-        label: 'Open inbox',
-        hint: 'Answer a customer now',
-        icon: Icons.forum_outlined,
-      ),
+      const QuickAction(key: 'inbox', label: 'Open inbox', hint: 'Answer a customer now', icon: Icons.forum_outlined),
     );
   }
   return actions;
@@ -95,9 +90,7 @@ List<({String kind, String label})> workKindsFor(Session session) {
 
 /// One line explaining how work reaches a business that has none yet.
 String howWorkArrives(Workspace workspace) => switch (workspace) {
-  Workspace.orders =>
-    'Orders arrive from a shared order link, from WhatsApp, or you can write one down here.',
-  Workspace.service =>
-    'Requests arrive from your website and WhatsApp — or log one while you are on the phone.',
+  Workspace.orders => 'Orders arrive from a shared order link, from WhatsApp, or you can write one down here.',
+  Workspace.service => 'Requests arrive from your website and WhatsApp — or log one while you are on the phone.',
   _ => 'Enquiries arrive from your website and WhatsApp — or log one while the traveller is still talking.',
 };

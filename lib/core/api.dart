@@ -214,9 +214,7 @@ class Api {
           workspace: (tenant['workspace'] ?? session.workspace) as String,
           role: session.role,
           persona: (data['persona'] ?? session.persona) as String,
-          permissions: ((data['permissions'] ?? session.permissions) as List)
-              .map((e) => e.toString())
-              .toList(),
+          permissions: ((data['permissions'] ?? session.permissions) as List).map((e) => e.toString()).toList(),
         );
         unawaited(_persist());
       }
@@ -233,11 +231,8 @@ class Api {
 
   Future<Map<String, dynamic>> assignToMe(String id) => _post('/inbox/$id/assign', {});
 
-  Future<Map<String, dynamic>> registerDevice(
-    String token, {
-    String platform = 'android',
-    String? deviceName,
-  }) => _post('/devices', {'token': token, 'platform': platform, 'deviceName': deviceName});
+  Future<Map<String, dynamic>> registerDevice(String token, {String platform = 'android', String? deviceName}) =>
+      _post('/devices', {'token': token, 'platform': platform, 'deviceName': deviceName});
 
   /// Lifecycle objects with the next step already resolved by the server.
   Future<Map<String, dynamic>> work() => _get('/work');

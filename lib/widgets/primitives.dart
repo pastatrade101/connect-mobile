@@ -115,9 +115,7 @@ class _Bell extends StatelessWidget {
             Icon(
               count > 0 ? Icons.notifications_rounded : Icons.notifications_none_rounded,
               size: 22,
-              color: count > 0
-                  ? (Theme.of(context).brightness == Brightness.dark ? Brand.darkInk : Brand.ink)
-                  : muted,
+              color: count > 0 ? (Theme.of(context).brightness == Brightness.dark ? Brand.darkInk : Brand.ink) : muted,
             ),
             if (count > 0)
               Positioned(
@@ -162,10 +160,7 @@ class GroupLabel extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 0, 12, 8),
       child: Row(
         children: [
-          Text(
-            text.toUpperCase(),
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(letterSpacing: 0.9),
-          ),
+          Text(text.toUpperCase(), style: Theme.of(context).textTheme.labelSmall?.copyWith(letterSpacing: 0.9)),
           const Spacer(),
           if (action != null && onAction != null)
             InkWell(
@@ -264,11 +259,9 @@ class AttentionRow extends StatelessWidget {
                         child: Text(
                           why,
                           maxLines: 2,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                            height: 1.25,
-                          ),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, fontSize: 15, height: 1.25),
                         ),
                       ),
                       if (mine)
@@ -281,11 +274,7 @@ class AttentionRow extends StatelessWidget {
                           ),
                           child: Text(
                             'you',
-                            style: TextStyle(
-                              color: Tone.blue(context),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                            ),
+                            style: TextStyle(color: Tone.blue(context), fontSize: 10, fontWeight: FontWeight.w700),
                           ),
                         ),
                     ],
@@ -361,10 +350,7 @@ class ContinueRow extends StatelessWidget {
               height: 36,
               alignment: Alignment.center,
               margin: const EdgeInsets.only(right: 12),
-              decoration: BoxDecoration(
-                color: Tone.blueWash(context),
-                borderRadius: BorderRadius.circular(10),
-              ),
+              decoration: BoxDecoration(color: Tone.blueWash(context), borderRadius: BorderRadius.circular(10)),
               child: Icon(_icons[kind] ?? Icons.forum_outlined, size: 18, color: Tone.blue(context)),
             ),
             Expanded(
@@ -436,13 +422,7 @@ class CalmIndicator extends StatelessWidget {
 /// The one thing to do, from the server's resolver. Used on Home, on work rows and
 /// after a successful create — so the app never ends a workflow at "done".
 class NextActionButton extends StatelessWidget {
-  const NextActionButton({
-    super.key,
-    required this.label,
-    this.hint,
-    required this.onTap,
-    this.dense = false,
-  });
+  const NextActionButton({super.key, required this.label, this.hint, required this.onTap, this.dense = false});
   final String label;
   final String? hint;
   final VoidCallback onTap;
@@ -482,11 +462,7 @@ class NextActionButton extends StatelessWidget {
                     children: [
                       Text(
                         label,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: const TextStyle(color: Colors.white, fontSize: 15.5, fontWeight: FontWeight.w700),
                       ),
                       if (hint != null) ...[
                         const SizedBox(height: 2),
@@ -535,20 +511,12 @@ class TodayCard extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: dark
-              ? const [Color(0xFF16202C), Color(0xFF0D131B)]
-              : const [Color(0xFF1C84EE), Color(0xFF0F5FB8)],
+          colors: dark ? const [Color(0xFF16202C), Color(0xFF0D131B)] : const [Color(0xFF1C84EE), Color(0xFF0F5FB8)],
         ),
         border: dark ? Border.all(color: Brand.darkLine) : null,
         boxShadow: dark
             ? null
-            : [
-                BoxShadow(
-                  color: Brand.blue.withValues(alpha: 0.28),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ],
+            : [BoxShadow(color: Brand.blue.withValues(alpha: 0.28), blurRadius: 18, offset: const Offset(0, 8))],
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
@@ -746,9 +714,7 @@ class WorkRow extends StatelessWidget {
                     children: [
                       Text(
                         _kindLabel[kind] ?? kind,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.labelSmall?.copyWith(fontSize: 10.5, letterSpacing: 0.7),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10.5, letterSpacing: 0.7),
                       ),
                       if (item['statusLabel'] != null) ...[
                         const SizedBox(width: 6),
@@ -761,9 +727,7 @@ class WorkRow extends StatelessWidget {
                     customer.isEmpty ? reference : customer,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, fontSize: 15),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, fontSize: 15),
                   ),
                   if (customer.isNotEmpty && reference.isNotEmpty)
                     Text(
@@ -779,11 +743,7 @@ class WorkRow extends StatelessWidget {
               const SizedBox(width: 10),
               NextActionButton(label: next['label'].toString(), onTap: onNext!, dense: true),
             ] else
-              Icon(
-                Icons.chevron_right_rounded,
-                size: 19,
-                color: Theme.of(context).textTheme.bodySmall?.color,
-              ),
+              Icon(Icons.chevron_right_rounded, size: 19, color: Theme.of(context).textTheme.bodySmall?.color),
           ],
         ),
       ),
@@ -845,14 +805,9 @@ class ActivityRow extends StatelessWidget {
               width: 6,
               height: 6,
               margin: const EdgeInsets.only(top: 6, right: 11),
-              decoration: BoxDecoration(
-                color: Tone.muted(context).withValues(alpha: 0.5),
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: Tone.muted(context).withValues(alpha: 0.5), shape: BoxShape.circle),
             ),
-            Expanded(
-              child: Text(text, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 14)),
-            ),
+            Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 14))),
             const SizedBox(width: 8),
             Text(relativeTime(at), style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11.5)),
           ],
@@ -904,11 +859,7 @@ class TeachingEmptyState extends StatelessWidget {
           const SizedBox(height: 14),
           Text(title, textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 6),
-          Text(
-            body,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.45),
-          ),
+          Text(body, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.45)),
           if (actionLabel != null && onAction != null) ...[
             const SizedBox(height: 18),
             FilledButton(

@@ -79,12 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     // The mark, at a size that reads as a brand rather than an icon.
                     Row(
                       children: [
-                        Image.asset(
-                          'assets/logo.png',
-                          width: 62,
-                          height: 62,
-                          filterQuality: FilterQuality.high,
-                        ),
+                        Image.asset('assets/logo.png', width: 62, height: 62, filterQuality: FilterQuality.high),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
@@ -122,9 +117,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 34),
                     Text(
                       'Sign in',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.titleLarge?.copyWith(fontSize: 27, letterSpacing: -0.6),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 27, letterSpacing: -0.6),
                     ),
                     const SizedBox(height: 5),
                     Text(
@@ -229,11 +222,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Center(
                       child: TextButton.icon(
                         onPressed: _busy ? null : _showServerSheet,
-                        icon: Icon(
-                          Icons.dns_outlined,
-                          size: 15,
-                          color: Theme.of(context).textTheme.bodySmall?.color,
-                        ),
+                        icon: Icon(Icons.dns_outlined, size: 15, color: Theme.of(context).textTheme.bodySmall?.color),
                         label: Text(
                           Api.instance.baseUrl.replaceFirst(RegExp(r'^https?://'), ''),
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12),
