@@ -155,16 +155,20 @@ class NavBar {
   static const fabSize = 56.0;
   static const fabLift = 26.0;
 
-  /// Gap between the pill and the bottom of the screen itself — not the safe
-  /// area. Sitting the bar above the home indicator left it visibly stranded in
-  /// the middle of the chin; it belongs down where the device curve is.
-  static const gutter = 12.0;
-
-  /// The pill's corner radius. True concentricity with an iPhone's screen corner
-  /// would want roughly (deviceRadius - gutter), around 45 — more than half the
-  /// bar's height, so it clamps to a stadium. That maximum is the closest the
-  /// shape can get to the curve it sits inside.
+  /// The pill's corner radius: a stadium, the roundest a bar this tall can be.
   static const radius = height / 2;
+
+  /// Inset from the screen on the left, right and bottom — not from the safe
+  /// area, which held the bar a whole home indicator up in the chin.
+  ///
+  /// The three are equal on purpose. One rounded rectangle only looks concentric
+  /// inside another when the gap between them equals the difference in their
+  /// radii, and it has to be the same gap on every side or the corners visibly
+  /// converge on one edge. An iPhone's display corner is around 55, the bar's is
+  /// [radius], so the gap that nests them is the difference. Too small a gutter
+  /// and the bar's corners chase the device's; too large and it floats free of
+  /// the curve entirely.
+  static const gutter = 55 - radius;
 
   /// What a scrolling screen must keep clear at the bottom, measured from the
   /// screen edge. The bar now covers the home indicator itself, so this is the
