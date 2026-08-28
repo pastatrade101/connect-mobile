@@ -90,7 +90,7 @@ class _MoreScreenState extends State<MoreScreen> {
     ].where((l) => l.allowed).toList();
 
     return ListView(
-      padding: const EdgeInsets.only(bottom: 28),
+      padding: const EdgeInsets.only(bottom: 96),
       children: [
         MobileHeader(title: 'More', subtitle: session.tenantName),
 

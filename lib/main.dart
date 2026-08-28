@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
 import 'core/api.dart';
 import 'core/notifications.dart';
+import 'core/motion.dart';
 import 'core/theme.dart';
 import 'core/workspace.dart';
 import 'screens/create_enquiry_sheet.dart';
@@ -185,82 +187,117 @@ class _ShellState extends State<Shell> {
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: IndexedStack(
-          index: _tab,
-          children: [
-            HomeScreen(
-              key: _homeKey,
-              onOpenThread: _openThread,
-              onOpenInbox: _openInbox,
-              onOpenWork: _openWork,
-              onQuickAction: _runAction,
-              onOpenAccount: () => setState(() => _tab = 4),
-            ),
-            InboxScreen(key: _inboxKey, onOpenThread: _openThread),
-            const SizedBox.shrink(), // the centre button opens a sheet, never a page
-            WorkScreen(key: _workKey, onCreate: _runAction),
-            MoreScreen(onSignedOut: _signedOut),
-          ],
+      // The gradient is the scaffold's own ground so it sits behind every tab and
+      // behind the floating nav, rather than being repainted per screen.
+      backgroundColor: Colors.transparent,
+      body: DecoratedBox(
+        decoration: appBackground(context),
+        child: SafeArea(
+          bottom: false,
+          child: IndexedStack(
+            index: _tab,
+            children: [
+              HomeScreen(
+                key: _homeKey,
+                onOpenThread: _openThread,
+                onOpenInbox: _openInbox,
+                onOpenWork: _openWork,
+                onQuickAction: _runAction,
+                onOpenAccount: () => setState(() => _tab = 4),
+              ),
+              InboxScreen(key: _inboxKey, onOpenThread: _openThread),
+              const SizedBox.shrink(), // the centre button opens a sheet, never a page
+              WorkScreen(key: _workKey, onCreate: _runAction),
+              MoreScreen(onSignedOut: _signedOut),
+            ],
+          ),
         ),
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: dark ? Brand.darkSurface : Brand.surface,
-          border: Border(top: BorderSide(color: dark ? Brand.darkLine : Brand.line)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: SizedBox(
-            height: 62,
-            child: Row(
-              children: [
-                _NavItem(
-                  icon: Icons.home_outlined,
-                  activeIcon: Icons.home_rounded,
-                  label: 'Home',
-                  selected: _tab == 0,
-                  onTap: () => setState(() => _tab = 0),
+      // A floating pill rather than a bar welded to the bottom edge: the content
+      // runs under it, which is what makes the gradient ground visible at all.
+      extendBody: true,
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(30),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              child: Container(
+                height: 62,
+                decoration: BoxDecoration(
+                  color: dark
+                      ? Brand.darkSurface.withValues(alpha: 0.82)
+                      : Colors.white.withValues(alpha: 0.88),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: dark ? Colors.white.withValues(alpha: 0.08) : Brand.line),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: dark ? 0.5 : 0.12),
+                      blurRadius: 22,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
-                _NavItem(
-                  icon: Icons.forum_outlined,
-                  activeIcon: Icons.forum_rounded,
-                  label: 'Inbox',
-                  selected: _tab == 1,
-                  onTap: () => _openInbox(),
-                ),
-                Expanded(
-                  child: Center(
-                    child: GestureDetector(
-                      onTap: _openQuickCreate,
-                      child: Container(
-                        width: 50,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: Tone.blue(context),
-                          borderRadius: BorderRadius.circular(12),
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Row(
+                  children: [
+                    _NavItem(
+                      icon: Icons.home_outlined,
+                      activeIcon: Icons.home_rounded,
+                      label: 'Home',
+                      selected: _tab == 0,
+                      onTap: () => setState(() => _tab = 0),
+                    ),
+                    _NavItem(
+                      icon: Icons.forum_outlined,
+                      activeIcon: Icons.forum_rounded,
+                      label: 'Inbox',
+                      selected: _tab == 1,
+                      onTap: () => _openInbox(),
+                    ),
+                    // Creation is an action, not a destination — it keeps its own
+                    // shape so it never reads as "the tab you are on".
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: GestureDetector(
+                        onTap: _openQuickCreate,
+                        child: Container(
+                          width: 46,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Tone.blue(context),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Tone.blue(context).withValues(alpha: 0.35),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(Icons.add_rounded, color: Colors.white, size: 24),
                         ),
-                        child: const Icon(Icons.add_rounded, color: Colors.white, size: 24),
                       ),
                     ),
-                  ),
+                    _NavItem(
+                      icon: Icons.assignment_outlined,
+                      activeIcon: Icons.assignment_rounded,
+                      label: 'Work',
+                      selected: _tab == 3,
+                      onTap: () => _openWork(),
+                    ),
+                    _NavItem(
+                      icon: Icons.more_horiz_rounded,
+                      activeIcon: Icons.more_horiz_rounded,
+                      label: 'More',
+                      selected: _tab == 4,
+                      onTap: () => setState(() => _tab = 4),
+                    ),
+                  ],
                 ),
-                _NavItem(
-                  icon: Icons.assignment_outlined,
-                  activeIcon: Icons.assignment_rounded,
-                  label: 'Work',
-                  selected: _tab == 3,
-                  onTap: () => _openWork(),
-                ),
-                _NavItem(
-                  icon: Icons.more_horiz_rounded,
-                  activeIcon: Icons.more_horiz_rounded,
-                  label: 'More',
-                  selected: _tab == 4,
-                  onTap: () => setState(() => _tab = 4),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -287,23 +324,46 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final muted = Theme.of(context).textTheme.bodySmall?.color;
+    final accent = Tone.blue(context);
+
+    // The selected tab takes twice the width, because it is the only one carrying
+    // a word. Splitting five slots equally left the label a few pixels short and
+    // clipped it — and a nav that overflows is worse than one without labels.
     return Expanded(
-      child: InkWell(
+      flex: selected ? 2 : 1,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(selected ? activeIcon : icon, size: 22, color: selected ? Tone.blue(context) : muted),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected ? Tone.blue(context) : muted,
+        child: Center(
+          // The selected tab wears the colour, so where you are is legible at a
+          // glance rather than from a two-pixel tint on an icon.
+          child: AnimatedContainer(
+            duration: Motion.quick,
+            curve: Curves.easeOut,
+            padding: EdgeInsets.symmetric(horizontal: selected ? 12 : 6, vertical: 7),
+            decoration: BoxDecoration(
+              color: selected ? Tone.wash(context, accent) : Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            // A last guard: a longer label in another language shrinks rather
+            // than overflowing.
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(selected ? activeIcon : icon, size: 21, color: selected ? accent : muted),
+                  if (selected) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      label,
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: accent),
+                    ),
+                  ],
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

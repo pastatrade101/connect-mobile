@@ -84,6 +84,30 @@ class Brand {
   static const darkBubbleOut = Color(0xFF0B5C4A);
 }
 
+/// The ground the app sits on.
+///
+/// Flat in daylight; at night a slow gradient with a cool lift at the top and a
+/// warmer one low down, so a screen of dark rows is not a flat black rectangle.
+/// Kept deliberately low-contrast — this is depth behind the content, never
+/// something that competes with it for attention.
+BoxDecoration appBackground(BuildContext context) {
+  if (Theme.of(context).brightness != Brightness.dark) {
+    return const BoxDecoration(color: Brand.ground);
+  }
+  return const BoxDecoration(
+    gradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      stops: [0.0, 0.45, 1.0],
+      colors: [
+        Color(0xFF0B1524), // a blue lift where the header sits
+        Color(0xFF07090C), // the settled black through the middle
+        Color(0xFF12101B), // a violet warmth under the nav
+      ],
+    ),
+  );
+}
+
 /// The same colour, in whichever theme is on screen.
 ///
 /// Every accent in this app goes through here. Reading a raw `Brand.success` in a

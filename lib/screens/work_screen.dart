@@ -170,7 +170,7 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
       onRefresh: load,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(0, 8, 0, 28),
+        padding: const EdgeInsets.fromLTRB(0, 8, 0, 96),
         children: [
           GroupedList(
             children: [

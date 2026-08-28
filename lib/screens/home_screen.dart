@@ -163,7 +163,7 @@ class HomeScreenState extends State<HomeScreen> {
       onRefresh: load,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(bottom: 30),
+        padding: const EdgeInsets.only(bottom: 96),
         children: [
           MobileHeader(
             title: _greeting,
