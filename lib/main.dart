@@ -148,9 +148,7 @@ class _ShellState extends State<Shell> {
   void _runAction(String key) {
     switch (key) {
       case 'enquiry':
-        final noun = workspaceOf(Api.instance.session?.workspace ?? '') == Workspace.service
-            ? 'request'
-            : 'enquiry';
+        final noun = workspaceOf(Api.instance.session?.workspace ?? '') == Workspace.service ? 'request' : 'enquiry';
         showModalBottomSheet<void>(
           context: context,
           isScrollControlled: true,
@@ -161,9 +159,7 @@ class _ShellState extends State<Shell> {
           _workKey.currentState?.load();
         });
       case 'order':
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('${Api.instance.baseUrl}/app/orders/new')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${Api.instance.baseUrl}/app/orders/new')));
       case 'inbox':
         _openInbox();
     }
@@ -174,9 +170,7 @@ class _ShellState extends State<Shell> {
     if (session == null) return;
     final actions = quickActionsFor(session);
     if (actions.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Your account cannot create records')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Your account cannot create records')));
       return;
     }
     showModalBottomSheet<void>(
@@ -238,90 +232,158 @@ class _ShellState extends State<Shell> {
       // A floating pill rather than a bar welded to the bottom edge: the content
       // runs under it, which is what makes the gradient ground visible at all.
       extendBody: true,
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(30),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-              child: Container(
-                height: 62,
-                decoration: BoxDecoration(
-                  color: dark
-                      ? Brand.darkSurface.withValues(alpha: 0.82)
-                      : Colors.white.withValues(alpha: 0.88),
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: dark ? Colors.white.withValues(alpha: 0.08) : Brand.line),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: dark ? 0.5 : 0.12),
-                      blurRadius: 22,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: Row(
-                  children: [
-                    _NavItem(
-                      icon: Icons.home_outlined,
-                      activeIcon: Icons.home_rounded,
-                      label: 'Home',
-                      selected: _tab == 0,
-                      onTap: () => setState(() => _tab = 0),
-                    ),
-                    _NavItem(
-                      icon: Icons.forum_outlined,
-                      activeIcon: Icons.forum_rounded,
-                      label: 'Inbox',
-                      selected: _tab == 1,
-                      onTap: () => _openInbox(),
-                    ),
-                    // Creation is an action, not a destination — it keeps its own
-                    // shape so it never reads as "the tab you are on".
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2),
-                      child: GestureDetector(
-                        onTap: _openQuickCreate,
-                        child: Container(
-                          width: 50,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: Tone.blue(context),
-                            borderRadius: BorderRadius.circular(14),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Tone.blue(context).withValues(alpha: 0.35),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
+      // Deliberately not inside a SafeArea: the bar sits down in the curve of the
+      // screen rather than above the home indicator, so the inset is the same
+      // small gutter on all three sides and the shape reads as concentric with
+      // the device corner. The indicator draws over the gutter below it, which is
+      // what a system tab bar does too.
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(NavBar.gutter, 0, NavBar.gutter, NavBar.gutter),
+        // The box is tall enough to hold the raised + as well as the pill. A
+        // Stack does not receive taps outside its own bounds, so the lift has to
+        // be real height rather than an overflow, or the button stops working
+        // exactly where it looks most obviously tappable.
+        child: SizedBox(
+          height: NavBar.height + NavBar.fabLift,
+          child: Stack(
+            children: [
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: NavBar.height,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(NavBar.radius),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: dark ? Brand.darkSurface.withValues(alpha: 0.82) : Colors.white.withValues(alpha: 0.88),
+                        borderRadius: BorderRadius.circular(NavBar.radius),
+                        border: Border.all(color: dark ? Colors.white.withValues(alpha: 0.08) : Brand.line),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: dark ? 0.5 : 0.12),
+                            blurRadius: 22,
+                            offset: const Offset(0, 8),
                           ),
-                          child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
-                        ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Row(
+                        // Stretch, so each tab's tap target is the full height of
+                        // the bar and not just the height of its icon and label.
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _NavItem(
+                            icon: Icons.home_outlined,
+                            activeIcon: Icons.home_rounded,
+                            label: 'Home',
+                            selected: _tab == 0,
+                            onTap: () => setState(() => _tab = 0),
+                          ),
+                          _NavItem(
+                            icon: Icons.forum_outlined,
+                            activeIcon: Icons.forum_rounded,
+                            label: 'Inbox',
+                            selected: _tab == 1,
+                            onTap: () => _openInbox(),
+                          ),
+                          // The middle slot draws nothing — the + rides above the
+                          // pill — but it still claims a fifth of the row, so the
+                          // four labels stay evenly spaced either side of it and
+                          // the button lands on the bar's true centre. It takes
+                          // taps as well: the button's circle stops short of the
+                          // bar's bottom edge, and a tap just under it obviously
+                          // means "create" rather than nothing at all.
+                          Expanded(
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: _openQuickCreate,
+                              child: const SizedBox.expand(),
+                            ),
+                          ),
+                          _NavItem(
+                            icon: Icons.assignment_outlined,
+                            activeIcon: Icons.assignment_rounded,
+                            label: 'Work',
+                            selected: _tab == 3,
+                            onTap: () => _openWork(),
+                          ),
+                          _NavItem(
+                            icon: Icons.more_horiz_rounded,
+                            activeIcon: Icons.more_horiz_rounded,
+                            label: 'More',
+                            selected: _tab == 4,
+                            onTap: () => setState(() => _tab = 4),
+                          ),
+                        ],
                       ),
                     ),
-                    _NavItem(
-                      icon: Icons.assignment_outlined,
-                      activeIcon: Icons.assignment_rounded,
-                      label: 'Work',
-                      selected: _tab == 3,
-                      onTap: () => _openWork(),
-                    ),
-                    _NavItem(
-                      icon: Icons.more_horiz_rounded,
-                      activeIcon: Icons.more_horiz_rounded,
-                      label: 'More',
-                      selected: _tab == 4,
-                      onTap: () => setState(() => _tab = 4),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
+              // Creation is an action, not a destination — so it is not a tab at
+              // all: a round button riding above the bar, in the one place
+              // nothing else can be.
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Center(child: _CreateButton(onTap: _openQuickCreate)),
+              ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The raised +.
+///
+/// Round where the tabs are square, lifted where they are flat, and ringed in the
+/// bar's own surface so it reads as sitting on top of the pill rather than being
+/// punched through it.
+class _CreateButton extends StatelessWidget {
+  const _CreateButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final blue = Tone.blue(context);
+    final dark = Tone.isDark(context);
+
+    return Semantics(
+      label: 'New',
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: NavBar.fabSize,
+          height: NavBar.fabSize,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [blue, Color.lerp(blue, Colors.black, 0.24)!],
+            ),
+            border: Border.all(color: dark ? Colors.white.withValues(alpha: 0.14) : Colors.white, width: 3),
+            boxShadow: [
+              // The coloured glow is what makes it read as lifted rather than
+              // merely large; the black shadow underneath keeps it legible on the
+              // pale ground, where a blue glow alone disappears.
+              BoxShadow(color: blue.withValues(alpha: 0.45), blurRadius: 18, offset: const Offset(0, 8)),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: dark ? 0.45 : 0.18),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const Icon(Icons.add_rounded, color: Colors.white, size: 30),
         ),
       ),
     );
@@ -340,18 +402,18 @@ class _NavItem extends StatelessWidget {
   final IconData icon;
   final IconData activeIcon;
 
-  /// Not drawn — kept for the semantics label, so the tab is still announced.
+  /// Drawn under the icon, and the tab's semantics label.
   final String label;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final muted = Theme.of(context).textTheme.bodySmall?.color;
     final accent = Tone.blue(context);
+    final tint = selected ? accent : Tone.muted(context);
 
-    // Equal flex on all four is what centres the + button: two tabs each side of
-    // it, so the middle of the row and the middle of the bar are the same point.
+    // Equal flex across all five slots — the four tabs and the empty middle — is
+    // what keeps the + on the true centre and the labels evenly spaced.
     return Expanded(
       child: Semantics(
         label: label,
@@ -360,17 +422,34 @@ class _NavItem extends StatelessWidget {
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: onTap,
-          child: Center(
-            child: AnimatedContainer(
-              duration: Motion.quick,
-              curve: Curves.easeOut,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: selected ? Tone.wash(context, accent) : Colors.transparent,
-                borderRadius: BorderRadius.circular(14),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: Motion.quick,
+                curve: Curves.easeOut,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+                decoration: BoxDecoration(
+                  color: selected ? Tone.wash(context, accent) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(selected ? activeIcon : icon, size: 22, color: tint),
               ),
-              child: Icon(selected ? activeIcon : icon, size: 26, color: selected ? accent : muted),
-            ),
+              const SizedBox(height: 3),
+              AnimatedDefaultTextStyle(
+                duration: Motion.quick,
+                curve: Curves.easeOut,
+                style: TextStyle(
+                  fontSize: 11,
+                  height: 1.1,
+                  letterSpacing: 0.1,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: tint,
+                ),
+                child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+            ],
           ),
         ),
       ),

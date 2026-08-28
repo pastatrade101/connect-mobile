@@ -160,6 +160,8 @@ class InboxScreenState extends State<InboxScreen> {
                   onRefresh: load,
                   child: ListView.separated(
                     physics: const AlwaysScrollableScrollPhysics(),
+                    // Clear the floating nav, or the last thread hides under it.
+                    padding: const EdgeInsets.only(bottom: NavBar.clearance),
                     itemCount: _visible.length,
                     separatorBuilder: (_, __) => const Divider(height: 1, indent: 76),
                     itemBuilder: (context, i) => _ThreadTile(

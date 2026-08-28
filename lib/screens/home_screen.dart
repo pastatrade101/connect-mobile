@@ -163,7 +163,8 @@ class HomeScreenState extends State<HomeScreen> {
       onRefresh: load,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(bottom: 96),
+        // Clear the floating nav, raised + included.
+        padding: const EdgeInsets.only(bottom: NavBar.clearance),
         children: [
           MobileHeader(
             title: _greeting,

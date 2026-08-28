@@ -140,6 +140,38 @@ class Tone {
   static Color wash(BuildContext c, Color accent) => accent.withValues(alpha: isDark(c) ? 0.20 : 0.10);
 }
 
+/// The floating bottom bar's measurements, in one place.
+///
+/// A scrolling screen has to leave room for a bar it does not own, and the two
+/// numbers drifting apart is how the last row ends up hidden under it. Anything
+/// that scrolls behind the nav pads by [clearance] rather than by a guess.
+class NavBar {
+  const NavBar._();
+
+  /// The pill itself.
+  static const height = 64.0;
+
+  /// The round create button, and how far it rides above the pill's top edge.
+  static const fabSize = 56.0;
+  static const fabLift = 26.0;
+
+  /// Gap between the pill and the bottom of the screen itself — not the safe
+  /// area. Sitting the bar above the home indicator left it visibly stranded in
+  /// the middle of the chin; it belongs down where the device curve is.
+  static const gutter = 12.0;
+
+  /// The pill's corner radius. True concentricity with an iPhone's screen corner
+  /// would want roughly (deviceRadius - gutter), around 45 — more than half the
+  /// bar's height, so it clamps to a stadium. That maximum is the closest the
+  /// shape can get to the curve it sits inside.
+  static const radius = height / 2;
+
+  /// What a scrolling screen must keep clear at the bottom, measured from the
+  /// screen edge. The bar now covers the home indicator itself, so this is the
+  /// whole story — do not add the view padding on top of it.
+  static const clearance = gutter + height + fabLift + 12;
+}
+
 ThemeData buildTheme({required Brightness brightness}) {
   final dark = brightness == Brightness.dark;
   final scheme = ColorScheme.fromSeed(

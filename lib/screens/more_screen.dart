@@ -90,7 +90,8 @@ class _MoreScreenState extends State<MoreScreen> {
     ].where((l) => l.allowed).toList();
 
     return ListView(
-      padding: const EdgeInsets.only(bottom: 96),
+      // Clear the floating nav, raised + included.
+      padding: const EdgeInsets.only(bottom: NavBar.clearance),
       children: [
         MobileHeader(title: 'More', subtitle: session.tenantName),
 
