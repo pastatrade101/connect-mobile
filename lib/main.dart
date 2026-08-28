@@ -434,7 +434,7 @@ class _NavItem extends StatelessWidget {
                   color: selected ? Tone.wash(context, accent) : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(selected ? activeIcon : icon, size: 22, color: tint),
+                child: Icon(selected ? activeIcon : icon, size: 26, color: tint),
               ),
               const SizedBox(height: 3),
               AnimatedDefaultTextStyle(
