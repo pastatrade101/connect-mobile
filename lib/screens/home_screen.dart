@@ -155,135 +155,138 @@ class HomeScreenState extends State<HomeScreen> {
 
     // A workspace with no history needs teaching, not an empty dashboard.
     final started =
-        attention.isNotEmpty ||
-        continuing.isNotEmpty ||
-        today.any((t) => (t['value'] ?? '0').toString() != '0');
+        attention.isNotEmpty || continuing.isNotEmpty || today.any((t) => (t['value'] ?? '0').toString() != '0');
 
-    return RefreshIndicator(
-      onRefresh: load,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        // Clear the floating nav, raised + included.
-        padding: const EdgeInsets.only(bottom: NavBar.clearance),
-        children: [
-          MobileHeader(
-            title: _greeting,
-            subtitle: _subtitle(session.tenantName, attention),
-            initials: initialsOf(session.userName),
-            onAccountTap: widget.onOpenAccount,
-            // The bell counts customers waiting for a reply and goes straight to
-            // them — yours first if any of them are yours.
-            alerts: _unread(attention),
-            onAlerts: session.can('conversations:read')
-                ? () => widget.onOpenInbox(
-                    filter: attention.any((a) => a['key'] == 'my_unread') ? 'mine' : 'all',
-                  )
-                : null,
-          ),
-
-          // ── OVERVIEW ───────────────────────────────────────────────────────
-          // How the day is going, at a glance, before anything asks for a decision.
-          if (today.isNotEmpty) TodayCard(tiles: today, currency: session.currency).entrance(),
-          if (today.isNotEmpty) const SizedBox(height: 14),
-
-          // ── ACT ────────────────────────────────────────────────────────────
-          if (attention.isNotEmpty) ...[
-            const GroupLabel(text: 'Needs you').entrance(index: 1),
-            GroupedList(
+    // The header is outside the scroll view, so who you are and what is waiting
+    // stay on screen the whole way down — and the bell stays reachable without
+    // scrolling back up. Inbox and Work already pin theirs the same way.
+    return Column(
+      children: [
+        MobileHeader(
+          title: _greeting,
+          subtitle: _subtitle(session.tenantName, attention),
+          initials: initialsOf(session.userName),
+          onAccountTap: widget.onOpenAccount,
+          // The bell counts customers waiting for a reply and goes straight to
+          // them — yours first if any of them are yours.
+          alerts: _unread(attention),
+          onAlerts: session.can('conversations:read')
+              ? () => widget.onOpenInbox(filter: attention.any((a) => a['key'] == 'my_unread') ? 'mine' : 'all')
+              : null,
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: load,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              // Clear the floating nav, raised + included.
+              padding: const EdgeInsets.only(bottom: NavBar.clearance),
               children: [
-                for (final item in attention) AttentionRow(item: item, onTap: () => _openAttention(item)),
-              ],
-            ).entrance(index: 2),
-          ] else
-            CalmIndicator(text: _calmLine(persona)),
+                // ── OVERVIEW ───────────────────────────────────────────────────────
+                // How the day is going, at a glance, before anything asks for a decision.
+                if (today.isNotEmpty) TodayCard(tiles: today, currency: session.currency).entrance(),
+                if (today.isNotEmpty) const SizedBox(height: 14),
 
-          // ── CONTINUE ───────────────────────────────────────────────────────
-          if (continuing.isNotEmpty) ...[
-            const SizedBox(height: 18),
-            GroupLabel(text: 'Continue working', action: 'All work', onAction: () => widget.onOpenWork()),
-            GroupedList(
-              children: [
-                for (final item in continuing.take(4))
-                  ContinueRow(item: item, onTap: () => _openContinue(item)),
-              ],
-            ),
-          ],
-
-          // One quiet line for the thing you occasionally have to type in yourself.
-          // Everything else that can be created lives on the + button.
-          if (primary != null && started) ...[
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: TextButton.icon(
-                onPressed: () => widget.onQuickAction(primary.key),
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: Text(primary.label),
-                style: TextButton.styleFrom(
-                  alignment: Alignment.centerLeft,
-                  minimumSize: const Size(0, 44),
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                ),
-              ),
-            ),
-          ],
-
-          // ── Getting started (only while there is genuinely nothing) ─────────
-          if (!started) ...[
-            const SizedBox(height: 14),
-            const GroupLabel(text: 'Getting started'),
-            GroupedList(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                // ── ACT ────────────────────────────────────────────────────────────
+                if (attention.isNotEmpty) ...[
+                  const GroupLabel(text: 'Needs you').entrance(index: 1),
+                  GroupedList(
                     children: [
-                      Text('How work reaches you', style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 6),
-                      Text(
-                        howWorkArrives(workspaceOf(session.workspace)),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.45),
-                      ),
-                      if (actions.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            for (final action in actions)
-                              OutlinedButton.icon(
-                                onPressed: () => widget.onQuickAction(action.key),
-                                icon: Icon(action.icon, size: 17),
-                                label: Text(action.label),
-                                style: OutlinedButton.styleFrom(
-                                  minimumSize: const Size(0, 44),
-                                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
+                      for (final item in attention) AttentionRow(item: item, onTap: () => _openAttention(item)),
+                    ],
+                  ).entrance(index: 2),
+                ] else
+                  CalmIndicator(text: _calmLine(persona)),
+
+                // ── CONTINUE ───────────────────────────────────────────────────────
+                if (continuing.isNotEmpty) ...[
+                  const SizedBox(height: 18),
+                  GroupLabel(text: 'Continue working', action: 'All work', onAction: () => widget.onOpenWork()),
+                  GroupedList(
+                    children: [
+                      for (final item in continuing.take(4)) ContinueRow(item: item, onTap: () => _openContinue(item)),
                     ],
                   ),
-                ),
+                ],
+
+                // One quiet line for the thing you occasionally have to type in yourself.
+                // Everything else that can be created lives on the + button.
+                if (primary != null && started) ...[
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: TextButton.icon(
+                      onPressed: () => widget.onQuickAction(primary.key),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: Text(primary.label),
+                      style: TextButton.styleFrom(
+                        alignment: Alignment.centerLeft,
+                        minimumSize: const Size(0, 44),
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                      ),
+                    ),
+                  ),
+                ],
+
+                // ── Getting started (only while there is genuinely nothing) ─────────
+                if (!started) ...[
+                  const SizedBox(height: 14),
+                  const GroupLabel(text: 'Getting started'),
+                  GroupedList(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('How work reaches you', style: Theme.of(context).textTheme.titleMedium),
+                            const SizedBox(height: 6),
+                            Text(
+                              howWorkArrives(workspaceOf(session.workspace)),
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.45),
+                            ),
+                            if (actions.isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  for (final action in actions)
+                                    OutlinedButton.icon(
+                                      onPressed: () => widget.onQuickAction(action.key),
+                                      icon: Icon(action.icon, size: 17),
+                                      label: Text(action.label),
+                                      style: OutlinedButton.styleFrom(
+                                        minimumSize: const Size(0, 44),
+                                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+
+                if (notes.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  for (final note in notes)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 6),
+                      child: Text(
+                        (note['label'] ?? '').toString(),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.5),
+                      ),
+                    ),
+                ],
               ],
             ),
-          ],
-
-          if (notes.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            for (final note in notes)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 0, 18, 6),
-                child: Text(
-                  (note['label'] ?? '').toString(),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.5),
-                ),
-              ),
-          ],
-        ],
-      ),
+          ),
+        ),
+      ],
     );
   }
 

@@ -57,30 +57,15 @@ class _MoreScreenState extends State<MoreScreen> {
 
     // Portal-only destinations, each gated on the permission that governs it.
     final portalLinks = <({String label, String path, IconData icon, bool allowed})>[
-      (
-        label: 'Team',
-        path: '/app/settings/team',
-        icon: Icons.group_outlined,
-        allowed: session.can('members:read'),
-      ),
-      (
-        label: 'WhatsApp',
-        path: '/app/whatsapp',
-        icon: Icons.chat_outlined,
-        allowed: session.can('whatsapp:read'),
-      ),
+      (label: 'Team', path: '/app/settings/team', icon: Icons.group_outlined, allowed: session.can('members:read')),
+      (label: 'WhatsApp', path: '/app/whatsapp', icon: Icons.chat_outlined, allowed: session.can('whatsapp:read')),
       (
         label: 'Message templates',
         path: '/app/whatsapp/templates',
         icon: Icons.description_outlined,
         allowed: session.can('whatsapp:templates'),
       ),
-      (
-        label: 'Integrations',
-        path: '/app/developers',
-        icon: Icons.code_rounded,
-        allowed: session.can('api_keys:read'),
-      ),
+      (label: 'Integrations', path: '/app/developers', icon: Icons.code_rounded, allowed: session.can('api_keys:read')),
       (
         label: 'Business settings',
         path: '/app/settings',
@@ -89,142 +74,142 @@ class _MoreScreenState extends State<MoreScreen> {
       ),
     ].where((l) => l.allowed).toList();
 
-    return ListView(
-      // Clear the floating nav, raised + included.
-      padding: const EdgeInsets.only(bottom: NavBar.clearance),
+    // Header outside the scroll view, so it stays put like Home's and Inbox's.
+    return Column(
       children: [
         MobileHeader(title: 'More', subtitle: session.tenantName),
-
-        GroupedList(
-          children: [
-            ListTile(
-              minVerticalPadding: 14,
-              leading: CircleAvatar(
-                radius: 22,
-                backgroundColor: Tone.blueWash(context),
-                child: Text(
-                  initialsOf(session.userName),
-                  style: TextStyle(color: Tone.blue(context), fontWeight: FontWeight.w700, fontSize: 15),
-                ),
+        Expanded(
+          child: ListView(
+            // Clear the floating nav, raised + included.
+            padding: const EdgeInsets.only(bottom: NavBar.clearance),
+            children: [
+              GroupedList(
+                children: [
+                  ListTile(
+                    minVerticalPadding: 14,
+                    leading: CircleAvatar(
+                      radius: 22,
+                      backgroundColor: Tone.blueWash(context),
+                      child: Text(
+                        initialsOf(session.userName),
+                        style: TextStyle(color: Tone.blue(context), fontWeight: FontWeight.w700, fontSize: 15),
+                      ),
+                    ),
+                    title: Text(session.userName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15.5)),
+                    subtitle: Text(session.userEmail, style: Theme.of(context).textTheme.bodySmall),
+                    trailing: StatusChip(label: _roleLabel(session.role)),
+                  ),
+                ],
               ),
-              title: Text(
-                session.userName,
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15.5),
-              ),
-              subtitle: Text(session.userEmail, style: Theme.of(context).textTheme.bodySmall),
-              trailing: StatusChip(label: _roleLabel(session.role)),
-            ),
-          ],
-        ),
 
-        const SizedBox(height: 18),
-        const GroupLabel(text: 'Appearance'),
-        GroupedList(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-              child: ValueListenableBuilder<ThemeMode>(
-                valueListenable: AppTheme.mode,
-                builder: (context, mode, _) => SizedBox(
-                  width: double.infinity,
-                  child: SegmentedButton<ThemeMode>(
-                    segments: const [
-                      ButtonSegment(
-                        value: ThemeMode.system,
-                        label: Text('System'),
-                        icon: Icon(Icons.phone_iphone_rounded, size: 17),
+              const SizedBox(height: 18),
+              const GroupLabel(text: 'Appearance'),
+              GroupedList(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                    child: ValueListenableBuilder<ThemeMode>(
+                      valueListenable: AppTheme.mode,
+                      builder: (context, mode, _) => SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<ThemeMode>(
+                          segments: const [
+                            ButtonSegment(
+                              value: ThemeMode.system,
+                              label: Text('System'),
+                              icon: Icon(Icons.phone_iphone_rounded, size: 17),
+                            ),
+                            ButtonSegment(
+                              value: ThemeMode.light,
+                              label: Text('Light'),
+                              icon: Icon(Icons.light_mode_rounded, size: 17),
+                            ),
+                            ButtonSegment(
+                              value: ThemeMode.dark,
+                              label: Text('Dark'),
+                              icon: Icon(Icons.dark_mode_rounded, size: 17),
+                            ),
+                          ],
+                          selected: {mode},
+                          showSelectedIcon: false,
+                          onSelectionChanged: (next) => AppTheme.set(next.first),
+                          style: SegmentedButton.styleFrom(
+                            selectedBackgroundColor: Tone.blue(context),
+                            selectedForegroundColor: Colors.white,
+                            side: BorderSide(color: Tone.line(context)),
+                            textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                        ),
                       ),
-                      ButtonSegment(
-                        value: ThemeMode.light,
-                        label: Text('Light'),
-                        icon: Icon(Icons.light_mode_rounded, size: 17),
-                      ),
-                      ButtonSegment(
-                        value: ThemeMode.dark,
-                        label: Text('Dark'),
-                        icon: Icon(Icons.dark_mode_rounded, size: 17),
-                      ),
-                    ],
-                    selected: {mode},
-                    showSelectedIcon: false,
-                    onSelectionChanged: (next) => AppTheme.set(next.first),
-                    style: SegmentedButton.styleFrom(
-                      selectedBackgroundColor: Tone.blue(context),
-                      selectedForegroundColor: Colors.white,
-                      side: BorderSide(color: Tone.line(context)),
-                      textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                     ),
                   ),
+                ],
+              ),
+
+              const SizedBox(height: 18),
+              const GroupLabel(text: 'Alerts'),
+              GroupedList(
+                children: [
+                  SwitchListTile(
+                    value: _alerts,
+                    onChanged: _setAlerts,
+                    title: const Text(
+                      'New message alerts',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text('When a chat you hold gets a reply.', style: Theme.of(context).textTheme.bodySmall),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 18),
+              const GroupLabel(text: 'Workspace'),
+              GroupedList(
+                children: [
+                  _Row(label: 'Business', value: session.tenantName),
+                  _Row(label: 'Works with', value: _workspaceLabel(workspaceOf(session.workspace))),
+                  _Row(label: 'Server', value: Api.instance.baseUrl.replaceFirst(RegExp(r'^https?://'), '')),
+                ],
+              ),
+
+              if (portalLinks.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                const GroupLabel(text: 'Manage in the portal'),
+                GroupedList(
+                  children: [
+                    for (final link in portalLinks)
+                      ListTile(
+                        minVerticalPadding: 12,
+                        leading: Icon(link.icon, size: 20, color: Theme.of(context).textTheme.bodySmall?.color),
+                        title: Text(link.label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                        trailing: const Icon(Icons.north_east_rounded, size: 16),
+                        onTap: () => ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text('${Api.instance.baseUrl}${link.path}'))),
+                      ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
+                  child: Text(
+                    'Company configuration stays on the big screen, where there is room to read it before changing it.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.5),
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: OutlinedButton.icon(
+                  onPressed: _confirmSignOut,
+                  icon: Icon(Icons.logout_rounded, size: 18, color: Tone.danger(context)),
+                  label: Text('Sign out', style: TextStyle(color: Tone.danger(context))),
+                  style: OutlinedButton.styleFrom(side: BorderSide(color: Tone.danger(context))),
                 ),
               ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 18),
-        const GroupLabel(text: 'Alerts'),
-        GroupedList(
-          children: [
-            SwitchListTile(
-              value: _alerts,
-              onChanged: _setAlerts,
-              title: const Text(
-                'New message alerts',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              ),
-              subtitle: Text(
-                'When a chat you hold gets a reply.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 18),
-        const GroupLabel(text: 'Workspace'),
-        GroupedList(
-          children: [
-            _Row(label: 'Business', value: session.tenantName),
-            _Row(label: 'Works with', value: _workspaceLabel(workspaceOf(session.workspace))),
-            _Row(label: 'Server', value: Api.instance.baseUrl.replaceFirst(RegExp(r'^https?://'), '')),
-          ],
-        ),
-
-        if (portalLinks.isNotEmpty) ...[
-          const SizedBox(height: 18),
-          const GroupLabel(text: 'Manage in the portal'),
-          GroupedList(
-            children: [
-              for (final link in portalLinks)
-                ListTile(
-                  minVerticalPadding: 12,
-                  leading: Icon(link.icon, size: 20, color: Theme.of(context).textTheme.bodySmall?.color),
-                  title: Text(link.label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                  trailing: const Icon(Icons.north_east_rounded, size: 16),
-                  onTap: () => ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('${Api.instance.baseUrl}${link.path}'))),
-                ),
             ],
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
-            child: Text(
-              'Company configuration stays on the big screen, where there is room to read it before changing it.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.5),
-            ),
-          ),
-        ],
-
-        const SizedBox(height: 24),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: OutlinedButton.icon(
-            onPressed: _confirmSignOut,
-            icon: Icon(Icons.logout_rounded, size: 18, color: Tone.danger(context)),
-            label: Text('Sign out', style: TextStyle(color: Tone.danger(context))),
-            style: OutlinedButton.styleFrom(side: BorderSide(color: Tone.danger(context))),
           ),
         ),
       ],
@@ -285,9 +270,7 @@ class _Row extends StatelessWidget {
               textAlign: TextAlign.right,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, fontSize: 14.5),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, fontSize: 14.5),
             ),
           ),
         ],
