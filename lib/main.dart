@@ -18,9 +18,31 @@ import 'screens/work_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Api.instance.restore();
-  await AppTheme.restore();
-  await Notifications.instance.init();
+
+  // Nothing here may stop the app starting.
+  //
+  // These read stored preferences and register with the notification centre.
+  // Any one of them can throw — a corrupt preferences file, a declined
+  // permission, a platform channel that is not ready — and an exception before
+  // runApp() terminates the process with no UI and no message. On a phone
+  // launched from the Home Screen that looks exactly like a crash, because it is
+  // one. A failed restore should cost a sign-in, never the whole app.
+  try {
+    await Api.instance.restore();
+  } catch (error) {
+    debugPrint('[startup] could not restore the session: $error');
+  }
+  try {
+    await AppTheme.restore();
+  } catch (error) {
+    debugPrint('[startup] could not restore the theme: $error');
+  }
+  try {
+    await Notifications.instance.init();
+  } catch (error) {
+    debugPrint('[startup] notifications unavailable: $error');
+  }
+
   runApp(const MakutanoApp());
 }
 
