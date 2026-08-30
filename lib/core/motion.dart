@@ -85,7 +85,6 @@ class _PressableRowState extends State<PressableRow> {
   }
 }
 
-
 /// Text scaling, for chrome whose geometry cannot grow.
 ///
 /// A tab bar, a segmented switch and a section label all live in boxes with a

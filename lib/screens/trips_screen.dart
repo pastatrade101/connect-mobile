@@ -93,11 +93,7 @@ class TripsScreenState extends State<TripsScreen> {
 
     return Column(
       children: [
-        MobileHeader(
-          title: 'Trips',
-          subtitle: _summary,
-          subtitleTone: _blocked > 0 ? Tone.danger(context) : null,
-        ),
+        MobileHeader(title: 'Trips', subtitle: _summary, subtitleTone: _blocked > 0 ? Tone.danger(context) : null),
         Padding(
           padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
           child: Row(
@@ -112,7 +108,10 @@ class TripsScreenState extends State<TripsScreen> {
               const SizedBox(width: 8),
               // "Mine" is an operations person's whole day; it deserves to be one
               // tap from anywhere on this screen.
-              _MineToggle(on: _mine, onTap: () => _switch(mine: !_mine)),
+              _MineToggle(
+                on: _mine,
+                onTap: () => _switch(mine: !_mine),
+              ),
             ],
           ),
         ),
@@ -143,8 +142,7 @@ class TripsScreenState extends State<TripsScreen> {
                     children: [
                       for (var g = 0; g < _groups.length; g++) ...[
                         GroupLabel(
-                          text:
-                              '${_groups[g]['label']} · ${(_groups[g]['items'] as List?)?.length ?? 0}',
+                          text: '${_groups[g]['label']} · ${(_groups[g]['items'] as List?)?.length ?? 0}',
                         ).entrance(index: g),
                         GroupedList(
                           children: [
@@ -187,11 +185,7 @@ class _MineToggle extends StatelessWidget {
         ),
         child: Text(
           'Mine',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: on ? accent : Tone.muted(context),
-          ),
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: on ? accent : Tone.muted(context)),
         ),
       ),
     );
@@ -210,38 +204,43 @@ class _Segmented extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: Tone.panel(context),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          for (final option in options)
-            Expanded(
-              child: PressableRow(
-                onTap: () => onChanged(option.key),
-                child: AnimatedContainer(
-                  duration: Motion.quick,
-                  padding: const EdgeInsets.symmetric(vertical: 7),
-                  decoration: BoxDecoration(
-                    color: selected == option.key ? Tone.surface(context) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                  child: Text(
-                    option.label,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: selected == option.key ? Tone.ink(context) : Tone.muted(context),
+    return ChromeText(
+      child: Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(color: Tone.panel(context), borderRadius: BorderRadius.circular(12)),
+        child: Row(
+          children: [
+            for (final option in options)
+              Expanded(
+                child: PressableRow(
+                  onTap: () => onChanged(option.key),
+                  child: AnimatedContainer(
+                    duration: Motion.quick,
+                    padding: const EdgeInsets.symmetric(vertical: 7),
+                    decoration: BoxDecoration(
+                      // TINTED when selected, not "raised". A lighter thumb on a
+                      // darker track only reads as chosen in light mode; in dark
+                      // the two tokens swap roles and the cue inverts, so the
+                      // selected tab looks like the unselected ones.
+                      color: selected == option.key ? Tone.wash(context, Tone.blue(context)) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Text(
+                      option.label,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: selected == option.key ? Tone.blue(context) : Tone.muted(context),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

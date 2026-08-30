@@ -47,11 +47,7 @@ class ReadinessRing extends StatelessWidget {
         children: [
           CustomPaint(
             size: Size(size, size),
-            painter: _RingPainter(
-              progress: (percent ?? 0) / 100,
-              colour: colour,
-              track: Tone.line(context),
-            ),
+            painter: _RingPainter(progress: (percent ?? 0) / 100, colour: colour, track: Tone.line(context)),
           ),
           Text(
             percent == null ? '—' : '$percent',
@@ -95,8 +91,7 @@ class _RingPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_RingPainter old) =>
-      old.progress != progress || old.colour != colour || old.track != track;
+  bool shouldRepaint(_RingPainter old) => old.progress != progress || old.colour != colour || old.track != track;
 }
 
 /// One trip in a list: the ring, where it is going, when it leaves, and — the
@@ -153,12 +148,12 @@ class TripRow extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.only(top: 2),
                           child: Text(
-                          _countdown(days)!,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: urgent ? Tone.danger(context) : Tone.muted(context),
-                          ),
+                            _countdown(days)!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: urgent ? Tone.danger(context) : Tone.muted(context),
+                            ),
                           ),
                         ),
                       ],
@@ -270,7 +265,8 @@ class SetupRow extends StatelessWidget {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: tone.withValues(alpha: 0.12),
+              // Tone.wash steps to 20% in dark, where a 12% tint vanishes.
+              color: Tone.wash(context, tone),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, size: 18, color: tone),

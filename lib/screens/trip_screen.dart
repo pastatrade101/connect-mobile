@@ -123,7 +123,10 @@ class _TripScreenState extends State<TripScreen> {
                 child: Container(
                   width: 38,
                   height: 4,
-                  decoration: BoxDecoration(color: Tone.line(sheetContext), borderRadius: BorderRadius.circular(2)),
+                  decoration: BoxDecoration(
+                    color: Tone.muted(sheetContext).withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -137,7 +140,15 @@ class _TripScreenState extends State<TripScreen> {
                   runSpacing: 8,
                   children: [
                     for (final option in suggestions)
-                      ActionChip(label: Text(option), onPressed: () => Navigator.pop(sheetContext, option)),
+                      ActionChip(
+                        label: Text(option, style: TextStyle(color: Tone.blue(sheetContext))),
+                        // Explicit tokens. A bare Material chip takes the seed's
+                        // neutral ramp rather than Brand — the one unstyled
+                        // control in the app, and near-illegible in dark.
+                        backgroundColor: Tone.wash(sheetContext, Tone.blue(sheetContext)),
+                        side: BorderSide(color: Tone.line(sheetContext)),
+                        onPressed: () => Navigator.pop(sheetContext, option),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 14),
@@ -198,7 +209,10 @@ class _TripScreenState extends State<TripScreen> {
             Container(
               width: 38,
               height: 4,
-              decoration: BoxDecoration(color: Tone.line(sheetContext), borderRadius: BorderRadius.circular(2)),
+              decoration: BoxDecoration(
+                color: Tone.muted(sheetContext).withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
             const SizedBox(height: 14),
             Padding(
@@ -588,10 +602,16 @@ class _ActionCard extends StatelessWidget {
               onPressed: enabled && !busy ? onAction : null,
               style: FilledButton.styleFrom(minimumSize: const Size(0, 46)),
               child: busy
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      // The button's own foreground, not a white literal: in dark
+                      // the fill is light blue with a DARK label, so a white
+                      // spinner all but disappears on it.
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Theme.of(context).colorScheme.onPrimary,
+                      ),
                     )
                   : Text(actionLabel),
             ),

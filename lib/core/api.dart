@@ -267,8 +267,8 @@ class Api {
   // The server does the grouping, the readiness verdict and the next action. The
   // app renders them and never recomputes them: a rule the phone reimplements is
   // a rule that drifts from the portal until the next app-store release fixes it.
-  Future<Map<String, dynamic>> trips({String tab = 'upcoming', bool mine = false}) =>
-      _get('/trips', {'tab': tab, if (mine) 'mine': '1'});
+  Future<Map<String, dynamic>> trips({String tab = 'upcoming', bool mine = false, int page = 1}) =>
+      _get('/trips', {'tab': tab, if (mine) 'mine': '1', if (page > 1) 'page': '$page'});
 
   Future<Map<String, dynamic>> trip(String id) => _get('/trips/$id');
 

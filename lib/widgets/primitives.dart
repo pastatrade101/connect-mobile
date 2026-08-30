@@ -169,7 +169,16 @@ class GroupLabel extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 0, 12, 8),
       child: Row(
         children: [
-          Text(text.toUpperCase(), style: Theme.of(context).textTheme.labelSmall?.copyWith(letterSpacing: 0.9)),
+          // Flexible, not fixed: a long label at a large text size overflowed the
+          // row rather than shortening.
+          Flexible(
+            child: Text(
+              text.toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(letterSpacing: 0.9),
+            ),
+          ),
           const Spacer(),
           if (action != null && onAction != null)
             InkWell(
