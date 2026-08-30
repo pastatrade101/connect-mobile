@@ -175,6 +175,12 @@ class _TripScreenState extends State<TripScreen> {
                   TextButton(onPressed: () => Navigator.pop(sheetContext), child: const Text('Cancel')),
                   const SizedBox(width: 8),
                   FilledButton(
+                    // The app's theme gives every FilledButton
+                    // minimumSize: Size.fromHeight(50) — which is
+                    // Size(double.infinity, 50), i.e. full width by design. That
+                    // is unsatisfiable inside a Row, and the sheet threw rather
+                    // than rendering. Same override _ActionCard already uses.
+                    style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
                     onPressed: () => Navigator.pop(sheetContext, controller.text),
                     child: const Text('Save'),
                   ),
