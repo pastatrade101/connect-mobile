@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../core/api.dart';
@@ -265,6 +267,99 @@ class _TripScreenState extends State<TripScreen> {
     await _save('operationsUserId', chosen['id']);
   }
 
+  /// Which setup rows pick from a list the tenant maintains, and what that list
+  /// is. Anything not here stays free text.
+  ({String field, List<Map<String, dynamic>> list, String? selected})? _pickerFor(String key) {
+    final crew = (_data?['crew'] ?? const {}) as Map<String, dynamic>;
+    List<Map<String, dynamic>> cast(Object? v) => ((v as List?) ?? const []).cast<Map<String, dynamic>>();
+    return switch (key) {
+      'accommodation' => (
+        field: 'accommodationItemId',
+        list: cast(_data?['accommodations']),
+        selected: _trip['accommodationItemId']?.toString(),
+      ),
+      'driver' => (field: 'driverCrewId', list: cast(crew['drivers']), selected: _trip['driverCrewId']?.toString()),
+      'guide' => (field: 'guideCrewId', list: cast(crew['guides']), selected: _trip['guideCrewId']?.toString()),
+      _ => null,
+    };
+  }
+
+  /// Pick from the tenant's own list — with "someone else" kept available,
+  /// because a driver who is not registered yet must not block a departure on
+  /// bookkeeping nobody has done.
+  Future<void> _pick(
+    String label,
+    ({String field, List<Map<String, dynamic>> list, String? selected}) picker,
+    String fallbackField,
+    String? current,
+    String hint,
+  ) async {
+    final chosen = await showModalBottomSheet<Map<String, String?>>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Container(
+        decoration: BoxDecoration(
+          color: Tone.surface(sheetContext),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+        ),
+        padding: const EdgeInsets.fromLTRB(0, 10, 0, 18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 38,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Tone.muted(sheetContext).withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: Row(children: [Text(label, style: Theme.of(sheetContext).textTheme.titleMedium)]),
+            ),
+            const SizedBox(height: 8),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final option in picker.list)
+                    ListTile(
+                      title: Text((option['name'] ?? '').toString()),
+                      subtitle: (option['phone'] ?? '').toString().isEmpty ? null : Text(option['phone'].toString()),
+                      trailing: picker.selected == option['id']
+                          ? Icon(Icons.check_rounded, color: Tone.success(sheetContext))
+                          : null,
+                      onTap: () => Navigator.pop(sheetContext, {'id': (option['id'] ?? '').toString()}),
+                    ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: Icon(Icons.edit_outlined, color: Tone.muted(sheetContext)),
+                    title: const Text('Someone else…'),
+                    onTap: () => Navigator.pop(sheetContext, {'free': ''}),
+                  ),
+                  if (current != null)
+                    ListTile(
+                      leading: Icon(Icons.close_rounded, color: Tone.muted(sheetContext)),
+                      title: const Text('Clear'),
+                      onTap: () => Navigator.pop(sheetContext, {'id': null}),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (chosen == null) return;
+    if (chosen.containsKey('free')) {
+      await _edit(fallbackField, label, current, hint);
+      return;
+    }
+    await _save(picker.field, chosen['id']);
+  }
+
   @override
   Widget build(BuildContext context) {
     // The gradient wraps the WHOLE scaffold, not just the body. Decorating only
@@ -391,7 +486,14 @@ class _TripScreenState extends State<TripScreen> {
                 icon: row.icon,
                 critical: row.critical,
                 enabled: _canWrite && !_busy,
-                onTap: () => _edit(row.field, row.label, row.value, row.hint),
+                onTap: () {
+                  final picker = _pickerFor(row.field);
+                  if (picker != null && picker.list.isNotEmpty) {
+                    unawaited(_pick(row.label, picker, row.field, row.value, row.hint));
+                  } else {
+                    unawaited(_edit(row.field, row.label, row.value, row.hint));
+                  }
+                },
               ),
             if (_can['assign'] == true)
               SetupRow(
@@ -614,10 +716,7 @@ class _ActionCard extends StatelessWidget {
                       // The button's own foreground, not a white literal: in dark
                       // the fill is light blue with a DARK label, so a white
                       // spinner all but disappears on it.
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Theme.of(context).colorScheme.onPrimary,
-                      ),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                     )
                   : Text(actionLabel),
             ),
