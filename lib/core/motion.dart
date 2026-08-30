@@ -84,3 +84,30 @@ class _PressableRowState extends State<PressableRow> {
     );
   }
 }
+
+
+/// Text scaling, for chrome whose geometry cannot grow.
+///
+/// A tab bar, a segmented switch and a section label all live in boxes with a
+/// fixed height. At iOS's accessibility text sizes their labels overflow — the
+/// nav bar reported "BOTTOM OVERFLOWED BY 1.00 PIXELS" on every tab.
+///
+/// The rule: CONTENT scales freely, because that is the whole point of the
+/// setting and a traveller's name at 300% is exactly what somebody needs.
+/// CHROME clamps, because a nav label at 300% is not more accessible if it is
+/// clipped in half. Wrap only the fixed-geometry parts.
+class ChromeText extends StatelessWidget {
+  const ChromeText({super.key, required this.child, this.max = 1.3});
+
+  final Widget child;
+  final double max;
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    return MediaQuery(
+      data: media.copyWith(textScaler: media.textScaler.clamp(maxScaleFactor: max)),
+      child: child,
+    );
+  }
+}

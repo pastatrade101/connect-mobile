@@ -310,60 +310,62 @@ class _ShellState extends State<Shell> {
                         ],
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Row(
-                        // Stretch, so each tab's tap target is the full height of
-                        // the bar and not just the height of its icon and label.
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _NavItem(
-                            icon: Icons.home_outlined,
-                            activeIcon: Icons.home_rounded,
-                            label: 'Home',
-                            selected: _tab == 0,
-                            onTap: () => setState(() => _tab = 0),
-                          ),
-                          _NavItem(
-                            icon: Icons.forum_outlined,
-                            activeIcon: Icons.forum_rounded,
-                            label: 'Inbox',
-                            selected: _tab == 1,
-                            onTap: () => _openInbox(),
-                          ),
-                          // The middle slot draws nothing — the + rides above the
-                          // pill — but it still claims a fifth of the row, so the
-                          // four labels stay evenly spaced either side of it and
-                          // the button lands on the bar's true centre. It takes
-                          // taps as well: the button's circle stops short of the
-                          // bar's bottom edge, and a tap just under it obviously
-                          // means "create" rather than nothing at all.
-                          Expanded(
-                            child: GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: _openQuickCreate,
-                              child: const SizedBox.expand(),
+                      // The bar is a fixed height; its labels must not grow past
+                      // what that can hold, or every tab clips.
+                      child: ChromeText(
+                        child: Row(
+                          // Stretch, so each tab's tap target is the full height of
+                          // the bar and not just the height of its icon and label.
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _NavItem(
+                              icon: Icons.home_outlined,
+                              activeIcon: Icons.home_rounded,
+                              label: 'Home',
+                              selected: _tab == 0,
+                              onTap: () => setState(() => _tab = 0),
                             ),
-                          ),
-                          _NavItem(
-                            icon: _tripsTab ? Icons.map_outlined : Icons.assignment_outlined,
-                            activeIcon: _tripsTab ? Icons.map_rounded : Icons.assignment_rounded,
-                            label: _tripsTab ? 'Trips' : 'Work',
-                            selected: _tab == 3,
-                            onTap: () {
-                              if (!_tripsTab) return _openWork();
-                              setState(() => _tab = 3);
-                              WidgetsBinding.instance.addPostFrameCallback(
-                                (_) => _tripsKey.currentState?.load(),
-                              );
-                            },
-                          ),
-                          _NavItem(
-                            icon: Icons.more_horiz_rounded,
-                            activeIcon: Icons.more_horiz_rounded,
-                            label: 'More',
-                            selected: _tab == 4,
-                            onTap: () => setState(() => _tab = 4),
-                          ),
-                        ],
+                            _NavItem(
+                              icon: Icons.forum_outlined,
+                              activeIcon: Icons.forum_rounded,
+                              label: 'Inbox',
+                              selected: _tab == 1,
+                              onTap: () => _openInbox(),
+                            ),
+                            // The middle slot draws nothing — the + rides above the
+                            // pill — but it still claims a fifth of the row, so the
+                            // four labels stay evenly spaced either side of it and
+                            // the button lands on the bar's true centre. It takes
+                            // taps as well: the button's circle stops short of the
+                            // bar's bottom edge, and a tap just under it obviously
+                            // means "create" rather than nothing at all.
+                            Expanded(
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: _openQuickCreate,
+                                child: const SizedBox.expand(),
+                              ),
+                            ),
+                            _NavItem(
+                              icon: _tripsTab ? Icons.map_outlined : Icons.assignment_outlined,
+                              activeIcon: _tripsTab ? Icons.map_rounded : Icons.assignment_rounded,
+                              label: _tripsTab ? 'Trips' : 'Work',
+                              selected: _tab == 3,
+                              onTap: () {
+                                if (!_tripsTab) return _openWork();
+                                setState(() => _tab = 3);
+                                WidgetsBinding.instance.addPostFrameCallback((_) => _tripsKey.currentState?.load());
+                              },
+                            ),
+                            _NavItem(
+                              icon: Icons.more_horiz_rounded,
+                              activeIcon: Icons.more_horiz_rounded,
+                              label: 'More',
+                              selected: _tab == 4,
+                              onTap: () => setState(() => _tab = 4),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
