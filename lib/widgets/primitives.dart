@@ -27,6 +27,7 @@ class MobileHeader extends StatelessWidget {
     this.trailing,
     this.onAlerts,
     this.alerts = 0,
+    this.subtitleTone,
   });
 
   final String title;
@@ -40,6 +41,9 @@ class MobileHeader extends StatelessWidget {
 
   /// Messages waiting for a reply — shown on the bell, capped at 99+.
   final int alerts;
+
+  /// Colour for the subtitle when it is carrying bad news rather than context.
+  final Color? subtitleTone;
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +69,12 @@ class MobileHeader extends StatelessWidget {
                     subtitle!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.5, height: 1.25),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontSize: 12.5,
+                      height: 1.25,
+                      color: subtitleTone,
+                      fontWeight: subtitleTone != null ? FontWeight.w600 : null,
+                    ),
                   ),
               ],
             ),

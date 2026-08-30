@@ -147,6 +147,13 @@ class Api {
     return _unwrap(res);
   }
 
+  Future<Map<String, dynamic>> _patch(String path, Map<String, dynamic> body) async {
+    final res = await http
+        .patch(_uri(path), headers: _headers, body: jsonEncode(body))
+        .timeout(const Duration(seconds: 25));
+    return _unwrap(res);
+  }
+
   Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body) async {
     final res = await http
         .post(_uri(path), headers: _headers, body: jsonEncode(body))
@@ -204,17 +211,35 @@ class Api {
     if (session != null && tenant != null) {
       final currency = (tenant['currency'] ?? '') as String;
       final name = (tenant['name'] ?? '') as String;
-      if (currency != session.currency || name != session.tenantName) {
+      final workspace = (tenant['workspace'] ?? session.workspace) as String;
+      final permissions = ((data['permissions'] ?? session.permissions) as List).map((e) => e.toString()).toList();
+
+      // Refresh on ANY change, not just a renamed business.
+      //
+      // This used to key on name and currency alone, which meant a permission
+      // granted after sign-in never reached the app: the tenant's name had to
+      // change for the session to be rebuilt. A new capability would therefore
+      // appear for new sign-ins and be invisible to everyone already using the
+      // app — the hardest kind of bug to notice, because it works on a fresh
+      // device.
+      final changed =
+          currency != session.currency ||
+          name != session.tenantName ||
+          workspace != session.workspace ||
+          permissions.length != session.permissions.length ||
+          !permissions.every(session.permissions.contains);
+
+      if (changed) {
         _session = Session(
           token: session.token,
           userName: session.userName,
           userEmail: session.userEmail,
           tenantName: name.isEmpty ? session.tenantName : name,
           currency: currency,
-          workspace: (tenant['workspace'] ?? session.workspace) as String,
+          workspace: workspace,
           role: session.role,
           persona: (data['persona'] ?? session.persona) as String,
-          permissions: ((data['permissions'] ?? session.permissions) as List).map((e) => e.toString()).toList(),
+          permissions: permissions,
         );
         unawaited(_persist());
       }
@@ -236,6 +261,22 @@ class Api {
 
   /// Lifecycle objects with the next step already resolved by the server.
   Future<Map<String, dynamic>> work() => _get('/work');
+
+  // ── trips ─────────────────────────────────────────────────────────────────
+  //
+  // The server does the grouping, the readiness verdict and the next action. The
+  // app renders them and never recomputes them: a rule the phone reimplements is
+  // a rule that drifts from the portal until the next app-store release fixes it.
+  Future<Map<String, dynamic>> trips({String tab = 'upcoming', bool mine = false}) =>
+      _get('/trips', {'tab': tab, if (mine) 'mine': '1'});
+
+  Future<Map<String, dynamic>> trip(String id) => _get('/trips/$id');
+
+  /// Set one field of a trip's setup. Returns the trip's FRESH readiness.
+  Future<Map<String, dynamic>> updateTrip(String id, Map<String, dynamic> patch) => _patch('/trips/$id', patch);
+
+  Future<Map<String, dynamic>> setTripStatus(String id, String status, {String? reason}) =>
+      _patch('/trips/$id/status', {'status': status, if (reason != null) 'reason': reason});
 
   /// Log an enquiry. Returns the reference and the thread it belongs to.
   Future<Map<String, dynamic>> createEnquiry({

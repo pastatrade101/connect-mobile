@@ -14,6 +14,8 @@ import 'screens/inbox_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/more_screen.dart';
 import 'screens/thread_screen.dart';
+import 'screens/trip_screen.dart';
+import 'screens/trips_screen.dart';
 import 'screens/work_screen.dart';
 
 Future<void> main() async {
@@ -122,6 +124,26 @@ class _ShellState extends State<Shell> {
   final _homeKey = GlobalKey<HomeScreenState>();
   final _inboxKey = GlobalKey<InboxScreenState>();
   final _workKey = GlobalKey<WorkScreenState>();
+  final _tripsKey = GlobalKey<TripsScreenState>();
+
+  /// Does the fourth tab show Trips or Work?
+  ///
+  /// For a tour operator the operational screen IS trips — that is the job the
+  /// app exists for once a sale is closed. Everyone else keeps the work feed,
+  /// and Work stays one tap from Home either way, so nothing is lost.
+  bool get _tripsTab {
+    final session = Api.instance.session;
+    if (session == null) return false;
+    final workspace = workspaceOf(session.workspace);
+    final relevant = workspace == Workspace.bookings || workspace == Workspace.hybrid;
+    return relevant && session.can('trips:read');
+  }
+
+  void _openTrip(String tripId) {
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => TripScreen(tripId: tripId)))
+        .then((_) => _tripsKey.currentState?.load());
+  }
 
   void _openThread(String conversationId) {
     Navigator.of(
@@ -138,6 +160,22 @@ class _ShellState extends State<Shell> {
   }
 
   void _openWork({String? kind}) {
+    // When Trips owns the fourth tab, the work feed becomes a pushed screen
+    // rather than disappearing.
+    if (_tripsTab) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => Scaffold(
+            backgroundColor: Colors.transparent,
+            body: DecoratedBox(
+              decoration: appBackground(context),
+              child: SafeArea(bottom: false, child: WorkScreen(onCreate: _runAction)),
+            ),
+          ),
+        ),
+      );
+      return;
+    }
     setState(() => _tab = 3);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _workKey.currentState?.focusKind(kind);
@@ -223,7 +261,9 @@ class _ShellState extends State<Shell> {
               ),
               InboxScreen(key: _inboxKey, onOpenThread: _openThread),
               const SizedBox.shrink(), // the centre button opens a sheet, never a page
-              WorkScreen(key: _workKey, onCreate: _runAction),
+              _tripsTab
+                  ? TripsScreen(key: _tripsKey, onOpenTrip: _openTrip)
+                  : WorkScreen(key: _workKey, onCreate: _runAction),
               MoreScreen(onSignedOut: _signedOut),
             ],
           ),
@@ -304,11 +344,17 @@ class _ShellState extends State<Shell> {
                             ),
                           ),
                           _NavItem(
-                            icon: Icons.assignment_outlined,
-                            activeIcon: Icons.assignment_rounded,
-                            label: 'Work',
+                            icon: _tripsTab ? Icons.map_outlined : Icons.assignment_outlined,
+                            activeIcon: _tripsTab ? Icons.map_rounded : Icons.assignment_rounded,
+                            label: _tripsTab ? 'Trips' : 'Work',
                             selected: _tab == 3,
-                            onTap: () => _openWork(),
+                            onTap: () {
+                              if (!_tripsTab) return _openWork();
+                              setState(() => _tab = 3);
+                              WidgetsBinding.instance.addPostFrameCallback(
+                                (_) => _tripsKey.currentState?.load(),
+                              );
+                            },
                           ),
                           _NavItem(
                             icon: Icons.more_horiz_rounded,
