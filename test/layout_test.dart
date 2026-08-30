@@ -143,6 +143,34 @@ void main() {
         // that needs doing drops below the fold on a small phone.
         expect(tester.getSize(find.byType(MobileHeader)).height, lessThan(60));
       });
+
+      testWidgets('a pushed header carries a back button without growing', (tester) async {
+        // The work feed is PUSHED when Trips owns the fourth tab, and shipped
+        // without any way back — the edge-swipe was the only exit. The button
+        // that fixes that must not cost height or push the title off the row.
+        var popped = false;
+        await pumpAt(
+          tester,
+          width,
+          MobileHeader(
+            title: 'Work',
+            subtitle: '12 things in flight',
+            onBack: () => popped = true,
+          ),
+        );
+        expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
+        expect(find.text('Work'), findsOneWidget);
+        expect(tester.getSize(find.byType(MobileHeader)).height, lessThan(60));
+
+        await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+        expect(popped, isTrue);
+      });
+
+      testWidgets('a tab header has no back button', (tester) async {
+        // The tabs are roots. A back arrow on one would go nowhere.
+        await pumpAt(tester, width, const MobileHeader(title: 'Work', subtitle: 'Nothing is open right now'));
+        expect(find.byIcon(Icons.arrow_back_rounded), findsNothing);
+      });
     });
   }
 }

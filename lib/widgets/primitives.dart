@@ -28,6 +28,7 @@ class MobileHeader extends StatelessWidget {
     this.onAlerts,
     this.alerts = 0,
     this.subtitleTone,
+    this.onBack,
   });
 
   final String title;
@@ -45,12 +46,28 @@ class MobileHeader extends StatelessWidget {
   /// Colour for the subtitle when it is carrying bad news rather than context.
   final Color? subtitleTone;
 
+  /// Set on a PUSHED screen. The tabs are roots and have nowhere to go back to,
+  /// so this is absent there — but a screen you arrived at from somewhere else
+  /// and cannot leave is a dead end, and the edge-swipe is not a visible one.
+  final VoidCallback? onBack;
+
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 8, 10),
+      // A back chevron sits where a toolbar's leading icon does, so the left
+      // inset tightens to let it — otherwise the title shifts right of every
+      // other screen's.
+      padding: EdgeInsets.fromLTRB(onBack == null ? 16 : 4, 4, 8, 10),
       child: Row(
         children: [
+          if (onBack != null)
+            IconButton(
+              onPressed: onBack,
+              icon: const Icon(Icons.arrow_back_rounded),
+              iconSize: 22,
+              visualDensity: VisualDensity.compact,
+              tooltip: 'Back',
+            ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

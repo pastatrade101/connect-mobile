@@ -169,7 +169,15 @@ class _ShellState extends State<Shell> {
             backgroundColor: Colors.transparent,
             body: DecoratedBox(
               decoration: appBackground(context),
-              child: SafeArea(bottom: false, child: WorkScreen(onCreate: _runAction)),
+              child: SafeArea(
+                bottom: false,
+                child: Builder(
+                  builder: (routeContext) => WorkScreen(
+                    onCreate: _runAction,
+                    onBack: () => Navigator.of(routeContext).pop(),
+                  ),
+                ),
+              ),
             ),
           ),
         ),

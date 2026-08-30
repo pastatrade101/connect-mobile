@@ -9,8 +9,11 @@ import '../widgets/skeleton.dart';
 /// Everything in flight, grouped by what it is — and each row carries the step the
 /// server says comes next, so nobody has to work out which module to open.
 class WorkScreen extends StatefulWidget {
-  const WorkScreen({super.key, this.initialKind, required this.onCreate});
+  const WorkScreen({super.key, this.initialKind, required this.onCreate, this.onBack});
   final String? initialKind;
+
+  /// Present only when this screen was PUSHED — see MobileHeader.onBack.
+  final VoidCallback? onBack;
   final void Function(String actionKey) onCreate;
 
   @override
@@ -87,6 +90,7 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
         MobileHeader(
           title: 'Work',
           subtitle: _items.isEmpty ? 'Nothing is open right now' : '${_items.length} things in flight',
+          onBack: widget.onBack,
         ),
         if (_tabs.length > 1)
           Container(

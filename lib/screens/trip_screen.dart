@@ -280,6 +280,11 @@ class _TripScreenState extends State<TripScreen> {
       ),
       'driver' => (field: 'driverCrewId', list: cast(crew['drivers']), selected: _trip['driverCrewId']?.toString()),
       'guide' => (field: 'guideCrewId', list: cast(crew['guides']), selected: _trip['guideCrewId']?.toString()),
+      'specialist' => (
+        field: 'specialistCrewId',
+        list: cast(crew['specialists']),
+        selected: _trip['specialistCrewId']?.toString(),
+      ),
       _ => null,
     };
   }
@@ -665,6 +670,17 @@ class _TripScreenState extends State<TripScreen> {
       value: _trip['guide'] as String?,
       icon: Icons.explore_outlined,
       hint: 'Who is guiding',
+      critical: false,
+    ),
+    // A seat of its own, not a guide by another name. Never critical: most game
+    // drives never carry one, and a row that is permanently red teaches people
+    // to stop reading the list.
+    (
+      field: 'specialist',
+      label: 'Specialist',
+      value: _trip['specialist'] as String?,
+      icon: Icons.hiking_outlined,
+      hint: 'Mountain guide, birding expert…',
       critical: false,
     ),
   ];
