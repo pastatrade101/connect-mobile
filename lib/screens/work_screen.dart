@@ -140,7 +140,19 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
                 )
               // Swiping sideways moves between tabs — the gesture people already
               // expect from every other tabbed app on the phone.
-              : TabBarView(controller: _controller, children: [for (final tab in _tabs) _page(session, tab.kind)]),
+              : TabBarView(
+                  controller: _controller,
+                  // The rows own horizontal gestures, so the tabs give theirs up.
+                  //
+                  // Both wanted the same drag and the TabBarView kept winning the
+                  // arena, so a swipe on a row usually changed tab instead of
+                  // revealing Delete — which made the whole list feel like
+                  // nothing could be deleted. Tabs are still one tap away and
+                  // visible; a swipe-to-delete that only works sometimes is
+                  // worse than a tab strip you have to tap.
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [for (final tab in _tabs) _page(session, tab.kind)],
+                ),
         ),
       ],
     );
