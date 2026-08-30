@@ -269,11 +269,15 @@ class Api {
 
   /// Hide an enquiry or a booking. The server keeps the row, so the undo below
   /// works long after the snackbar has gone.
-  Future<Map<String, dynamic>> deleteWorkItem(String kind, String id) =>
-      _delete('${kind == 'enquiry' ? '/enquiries' : '/bookings'}/$id');
+  static String _workPath(String kind) => switch (kind) {
+    'enquiry' => '/enquiries',
+    'quotation' => '/quotations',
+    _ => '/bookings',
+  };
 
-  Future<Map<String, dynamic>> restoreWorkItem(String kind, String id) =>
-      _post('${kind == 'enquiry' ? '/enquiries' : '/bookings'}/$id', const {});
+  Future<Map<String, dynamic>> deleteWorkItem(String kind, String id) => _delete('${_workPath(kind)}/$id');
+
+  Future<Map<String, dynamic>> restoreWorkItem(String kind, String id) => _post('${_workPath(kind)}/$id', const {});
 
   // ── trips ─────────────────────────────────────────────────────────────────
   //

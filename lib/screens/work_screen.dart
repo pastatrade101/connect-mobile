@@ -190,10 +190,12 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
             children: [
               for (final item in visible)
                 SwipeToDelete(
-                  // Only what the server can actually hide. A quotation lives in
-                  // the website's hands and an order is a different module, so
-                  // offering the gesture there would only ever fail.
-                  enabled: item['kind'] == 'enquiry' || item['kind'] == 'booking',
+                  // Orders are a different module and have their own screens.
+                  // Quotations ARE deletable here even though the website owns
+                  // them: the mirror only ever pushes what still exists, so a
+                  // quotation deleted over there would otherwise sit on this
+                  // list forever with no way to clear it.
+                  enabled: item['kind'] != 'order',
                   onDelete: () => _delete(item),
                   child: WorkRow(
                     item: item,
@@ -207,6 +209,13 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
       ),
     );
   }
+
+  static String _label(String kind) => switch (kind) {
+    'enquiry' => 'Enquiry',
+    'booking' => 'Booking',
+    'quotation' => 'Quotation',
+    _ => 'Item',
+  };
 
   /// Same wording as everywhere else: the server's message when it gave one.
   String _message(Object error) => error is ApiException ? error.message : 'That did not work. Try again.';
@@ -239,7 +248,7 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
 
     messenger.showSnackBar(
       SnackBar(
-        content: Text('${kind == 'enquiry' ? 'Enquiry' : 'Booking'} deleted'),
+        content: Text('${_label(kind)} deleted'),
         duration: const Duration(seconds: 6),
         action: SnackBarAction(
           label: 'Undo',
