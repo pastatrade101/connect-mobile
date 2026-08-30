@@ -161,6 +161,11 @@ class Api {
     return _unwrap(res);
   }
 
+  Future<Map<String, dynamic>> _delete(String path) async {
+    final res = await http.delete(_uri(path), headers: _headers).timeout(const Duration(seconds: 25));
+    return _unwrap(res);
+  }
+
   // ── auth ──────────────────────────────────────────────────────────────────
   Future<Session> signIn(String email, String password, {String device = 'Makutano mobile'}) async {
     final data = await _post('/auth/login', {'email': email, 'password': password, 'device': device});
@@ -261,6 +266,14 @@ class Api {
 
   /// Lifecycle objects with the next step already resolved by the server.
   Future<Map<String, dynamic>> work() => _get('/work');
+
+  /// Hide an enquiry or a booking. The server keeps the row, so the undo below
+  /// works long after the snackbar has gone.
+  Future<Map<String, dynamic>> deleteWorkItem(String kind, String id) =>
+      _delete('${kind == 'enquiry' ? '/enquiries' : '/bookings'}/$id');
+
+  Future<Map<String, dynamic>> restoreWorkItem(String kind, String id) =>
+      _post('${kind == 'enquiry' ? '/enquiries' : '/bookings'}/$id', const {});
 
   // ── trips ─────────────────────────────────────────────────────────────────
   //

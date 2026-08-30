@@ -5,6 +5,7 @@ import '../core/theme.dart';
 import '../core/workspace.dart';
 import '../widgets/primitives.dart';
 import '../widgets/skeleton.dart';
+import '../widgets/swipe_to_delete.dart';
 
 /// Everything in flight, grouped by what it is — and each row carries the step the
 /// server says comes next, so nobody has to work out which module to open.
@@ -176,14 +177,69 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
           GroupedList(
             children: [
               for (final item in visible)
-                WorkRow(
-                  item: item,
-                  onTap: () => _showDetail(context, item),
-                  onNext: item['next'] == null ? null : () => _showDetail(context, item),
+                SwipeToDelete(
+                  // Only what the server can actually hide. A quotation lives in
+                  // the website's hands and an order is a different module, so
+                  // offering the gesture there would only ever fail.
+                  enabled: item['kind'] == 'enquiry' || item['kind'] == 'booking',
+                  onDelete: () => _delete(item),
+                  child: WorkRow(
+                    item: item,
+                    onTap: () => _showDetail(context, item),
+                    onNext: item['next'] == null ? null : () => _showDetail(context, item),
+                  ),
                 ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  /// Same wording as everywhere else: the server's message when it gave one.
+  String _message(Object error) => error is ApiException ? error.message : 'That did not work. Try again.';
+
+  /// Hide one row, with a way back.
+  ///
+  /// The list updates before the request does, because a delete that waits on a
+  /// round trip feels broken on a Tanzanian mobile connection. If the server
+  /// refuses, the row comes back and says why — an optimistic update has to be
+  /// honest about being wrong.
+  Future<void> _delete(Map<String, dynamic> item) async {
+    final kind = item['kind'] as String;
+    final id = item['id'] as String;
+    final index = _items.indexWhere((i) => i['id'] == id);
+    if (index < 0) return;
+
+    setState(() => _items = [..._items]..removeAt(index));
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+
+    try {
+      await Api.instance.deleteWorkItem(kind, id);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _items = [..._items]..insert(index, item));
+      messenger.showSnackBar(SnackBar(content: Text(_message(e))));
+      return;
+    }
+    if (!mounted) return;
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('${kind == 'enquiry' ? 'Enquiry' : 'Booking'} deleted'),
+        duration: const Duration(seconds: 6),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () async {
+            try {
+              await Api.instance.restoreWorkItem(kind, id);
+              await load();
+            } catch (e) {
+              if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_message(e))));
+            }
+          },
+        ),
       ),
     );
   }
