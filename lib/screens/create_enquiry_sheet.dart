@@ -240,8 +240,11 @@ class QuickCreateSheet extends StatelessWidget {
                       width: 38,
                       height: 38,
                       alignment: Alignment.center,
-                      decoration: BoxDecoration(color: Tone.blueWash(context), borderRadius: BorderRadius.circular(10)),
-                      child: Icon(action.icon as IconData, color: Tone.blue(context), size: 19),
+                      decoration: BoxDecoration(
+                        color: Tone.accentWash(context),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(action.icon as IconData, color: Tone.accent(context), size: 19),
                     ),
                     title: Text(
                       action.label as String,

@@ -23,6 +23,7 @@ class MobileHeader extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.initials,
+    this.avatarUrl,
     this.onAccountTap,
     this.trailing,
     this.onAlerts,
@@ -34,6 +35,14 @@ class MobileHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
   final String? initials;
+
+  /// The operator's own mark, when the marketplace has one.
+  ///
+  /// The avatar is the business, not the person signed in — an operator opening
+  /// this app should see their own crest, the same one a traveller sees on their
+  /// listings. Initials remain the fallback for a tenant with no logo yet, and
+  /// for the moment the image fails to load.
+  final String? avatarUrl;
   final VoidCallback? onAccountTap;
   final Widget? trailing;
 
@@ -98,20 +107,13 @@ class MobileHeader extends StatelessWidget {
           ),
           if (onAlerts != null) _Bell(count: alerts, onTap: onAlerts!),
           if (trailing != null) trailing!,
-          if (initials != null)
+          if (initials != null || avatarUrl != null)
             InkWell(
               onTap: onAccountTap,
               customBorder: const CircleBorder(),
               child: Padding(
                 padding: const EdgeInsets.all(6),
-                child: CircleAvatar(
-                  radius: 16,
-                  backgroundColor: Tone.blueWash(context),
-                  child: Text(
-                    initials!,
-                    style: TextStyle(color: Tone.blue(context), fontWeight: FontWeight.w700, fontSize: 12.5),
-                  ),
-                ),
+                child: Avatar(url: avatarUrl, initials: initials, radius: 16),
               ),
             ),
         ],
@@ -174,6 +176,43 @@ class _Bell extends StatelessWidget {
   }
 }
 
+/// The business's mark: its logo where there is one, its initials where there
+/// is not — and its initials again the moment the image fails, because a broken
+/// picture where a face should be is worse than two letters.
+class Avatar extends StatelessWidget {
+  const Avatar({super.key, this.url, this.initials, this.radius = 16});
+  final String? url;
+  final String? initials;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = CircleAvatar(
+      radius: radius,
+      backgroundColor: Tone.accentWash(context),
+      child: Text(
+        initials ?? '#',
+        style: TextStyle(color: Tone.accent(context), fontWeight: FontWeight.w700, fontSize: radius * 0.78),
+      ),
+    );
+    if (url == null || url!.isEmpty) return fallback;
+    return ClipOval(
+      child: SizedBox(
+        width: radius * 2,
+        height: radius * 2,
+        child: Image.network(
+          url!,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => fallback,
+          // No spinner on something this small: the initials hold the space and
+          // the logo replaces them when it arrives.
+          loadingBuilder: (context, child, progress) => progress == null ? child : fallback,
+        ),
+      ),
+    );
+  }
+}
+
 class GroupLabel extends StatelessWidget {
   const GroupLabel({super.key, required this.text, this.action, this.onAction});
   final String text;
@@ -186,9 +225,12 @@ class GroupLabel extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 0, 12, 8),
       child: Row(
         children: [
-          // Flexible, not fixed: a long label at a large text size overflowed the
-          // row rather than shortening.
-          Flexible(
+          // Expanded, not Flexible-plus-Spacer: both are flex:1, so the free
+          // space was being SPLIT between the label's box and the spacer and the
+          // action landed in the middle of the row instead of against the right
+          // edge. Expanded gives the label everything left over, which still
+          // ellipsises a long label at a large text size.
+          Expanded(
             child: Text(
               text.toUpperCase(),
               maxLines: 1,
@@ -196,7 +238,6 @@ class GroupLabel extends StatelessWidget {
               style: Theme.of(context).textTheme.labelSmall?.copyWith(letterSpacing: 0.9),
             ),
           ),
-          const Spacer(),
           if (action != null && onAction != null)
             InkWell(
               onTap: onAction,
@@ -205,7 +246,7 @@ class GroupLabel extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                 child: Text(
                   action!,
-                  style: TextStyle(color: Tone.blue(context), fontSize: 12.5, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: Tone.accent(context), fontSize: 12.5, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -261,7 +302,7 @@ class AttentionRow extends StatelessWidget {
         ? Tone.danger(context)
         : urgency == 'high'
         ? Tone.warning(context)
-        : Tone.blue(context);
+        : Tone.accent(context);
     final mine = (item['scope'] ?? '') == 'mine';
     final count = (item['count'] as num? ?? 0).toInt();
 
@@ -304,12 +345,12 @@ class AttentionRow extends StatelessWidget {
                           margin: const EdgeInsets.only(left: 7),
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                           decoration: BoxDecoration(
-                            color: Tone.blueWash(context),
+                            color: Tone.accentWash(context),
                             borderRadius: BorderRadius.circular(5),
                           ),
                           child: Text(
                             'you',
-                            style: TextStyle(color: Tone.blue(context), fontSize: 10, fontWeight: FontWeight.w700),
+                            style: TextStyle(color: Tone.accent(context), fontSize: 10, fontWeight: FontWeight.w700),
                           ),
                         ),
                     ],
@@ -385,8 +426,8 @@ class ContinueRow extends StatelessWidget {
               height: 36,
               alignment: Alignment.center,
               margin: const EdgeInsets.only(right: 12),
-              decoration: BoxDecoration(color: Tone.blueWash(context), borderRadius: BorderRadius.circular(10)),
-              child: Icon(_icons[kind] ?? Icons.forum_outlined, size: 18, color: Tone.blue(context)),
+              decoration: BoxDecoration(color: Tone.accentWash(context), borderRadius: BorderRadius.circular(10)),
+              child: Icon(_icons[kind] ?? Icons.forum_outlined, size: 18, color: Tone.accent(context)),
             ),
             Expanded(
               child: Column(
@@ -471,8 +512,8 @@ class NextActionButton extends StatelessWidget {
         style: TextButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           minimumSize: const Size(0, 36),
-          backgroundColor: Tone.blueWash(context),
-          foregroundColor: Tone.blue(context),
+          backgroundColor: Tone.accentWash(context),
+          foregroundColor: Tone.accent(context),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         child: Text(label, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
@@ -481,7 +522,7 @@ class NextActionButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Material(
-        color: Tone.blue(context),
+        color: Tone.accent(context),
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,
@@ -542,16 +583,18 @@ class TodayCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         // At night the card stops being a lamp: a deep surface lifted a little off
-        // the black, with the blue kept for the accents rather than the whole field.
+        // the ground, with the accent kept for the details rather than the whole
+        // field. By day it is the marketplace's terracotta, deepening downward —
+        // the last blue rectangle in the app, and the most visible one.
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: dark ? const [Color(0xFF16202C), Color(0xFF0D131B)] : const [Color(0xFF1C84EE), Color(0xFF0F5FB8)],
+          colors: dark ? const [Color(0xFF26201A), Color(0xFF161310)] : const [Color(0xFFC05C31), Color(0xFF8F3E1F)],
         ),
         border: dark ? Border.all(color: Brand.darkLine) : null,
         boxShadow: dark
             ? null
-            : [BoxShadow(color: Brand.blue.withValues(alpha: 0.28), blurRadius: 18, offset: const Offset(0, 8))],
+            : [BoxShadow(color: Brand.accent.withValues(alpha: 0.28), blurRadius: 18, offset: const Offset(0, 8))],
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
@@ -559,12 +602,12 @@ class TodayCard extends StatelessWidget {
           Positioned(
             right: -46,
             top: -58,
-            child: _Disc(size: 168, color: dark ? Brand.darkBlue : Colors.white, opacity: dark ? 0.07 : 0.13),
+            child: _Disc(size: 168, color: dark ? Brand.darkAccent : Colors.white, opacity: dark ? 0.07 : 0.13),
           ),
           Positioned(
             right: 54,
             bottom: -74,
-            child: _Disc(size: 132, color: dark ? Brand.darkBlue : Colors.white, opacity: dark ? 0.05 : 0.08),
+            child: _Disc(size: 132, color: dark ? Brand.darkAccent : Colors.white, opacity: dark ? 0.05 : 0.08),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
@@ -577,7 +620,7 @@ class TodayCard extends StatelessWidget {
                     Text(
                       'TODAY',
                       style: TextStyle(
-                        color: dark ? Brand.darkBlue : Colors.white.withValues(alpha: 0.75),
+                        color: dark ? Brand.darkAccent : Colors.white.withValues(alpha: 0.75),
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.1,
@@ -648,7 +691,7 @@ class _Stat extends StatelessWidget {
     final dark = Tone.isDark(context);
     final value_ = dark ? Brand.darkInk : Colors.white;
     final label_ = dark ? Brand.darkInkSoft : Colors.white.withValues(alpha: 0.78);
-    final unit = dark ? Brand.darkBlue : Colors.white.withValues(alpha: 0.8);
+    final unit = dark ? Brand.darkAccent : Colors.white.withValues(alpha: 0.8);
     final money = (tile['kind'] ?? 'count') == 'money';
     final raw = (tile['value'] ?? '0').toString();
     final value = money ? _money(raw) : raw;
@@ -732,6 +775,7 @@ class WorkRow extends StatelessWidget {
     final next = item['next'] as Map<String, dynamic>?;
     final customer = (item['customer'] ?? item['title'] ?? '').toString();
     final reference = (item['reference'] ?? item['detail'] ?? '').toString();
+    final subject = (item['subject'] ?? '').toString();
 
     return PressableRow(
       onTap: onTap,
@@ -755,6 +799,14 @@ class WorkRow extends StatelessWidget {
                         const SizedBox(width: 6),
                         StatusChip(label: item['statusLabel'].toString()),
                       ],
+                      // Where the lead came from. A marketplace enquiry and a
+                      // WhatsApp one were indistinguishable on this row, and on a
+                      // marketplace product that is the first thing an operator
+                      // wants to know.
+                      if (item['source'] == 'MARKETPLACE') ...[
+                        const SizedBox(width: 6),
+                        const SourceChip(label: 'Marketplace'),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 3),
@@ -764,7 +816,16 @@ class WorkRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, fontSize: 15),
                   ),
-                  if (customer.isNotEmpty && reference.isNotEmpty)
+                  // The trip they are asking about — the single most useful fact
+                  // on a marketplace enquiry, and previously not shown at all.
+                  if (subject.isNotEmpty)
+                    Text(
+                      subject,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    )
+                  else if (customer.isNotEmpty && reference.isNotEmpty)
                     Text(
                       reference,
                       maxLines: 1,
@@ -780,6 +841,31 @@ class WorkRow extends StatelessWidget {
             ] else
               Icon(Icons.chevron_right_rounded, size: 19, color: Theme.of(context).textTheme.bodySmall?.color),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Where a lead came from. Deliberately quieter than StatusChip: the status is
+/// what the operator must act on, the source is only context.
+class SourceChip extends StatelessWidget {
+  const SourceChip({super.key, required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+      decoration: BoxDecoration(color: scheme.primary.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(5)),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          fontSize: 10,
+          letterSpacing: 0.4,
+          fontWeight: FontWeight.w600,
+          color: scheme.primary,
         ),
       ),
     );
@@ -816,7 +902,7 @@ class StatusChip extends StatelessWidget {
       return Tone.warning(context);
     }
     if (l.contains('cancel') || l.contains('fail') || l.contains('declin')) return Tone.danger(context);
-    return Tone.blue(context);
+    return Tone.accent(context);
   }
 }
 

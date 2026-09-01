@@ -33,7 +33,7 @@ class ReadinessRing extends StatelessWidget {
     final blocked = canBeReady == false;
     final soon = daysToDeparture != null && daysToDeparture! <= 7;
     if (blocked) return soon ? Tone.danger(context) : Tone.warning(context);
-    return (percent ?? 0) >= 100 ? Tone.success(context) : Tone.blue(context);
+    return (percent ?? 0) >= 100 ? Tone.success(context) : Tone.accent(context);
   }
 
   @override
@@ -294,7 +294,7 @@ class SetupRow extends StatelessWidget {
           if (enabled && onTap != null)
             Text(
               actionLabel ?? (set ? 'Change' : 'Set'),
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Tone.blue(context)),
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Tone.accent(context)),
             ),
         ],
       ),

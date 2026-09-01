@@ -6,12 +6,18 @@ import '../core/theme.dart';
 import '../core/workspace.dart';
 import '../widgets/primitives.dart';
 import '../widgets/skeleton.dart';
+import 'listings.dart';
 
-/// Home is three questions, in this order, and never more than that:
+/// Home is an operator's workspace on a marketplace, which is four questions:
 ///
-///   ACT      — what needs me right now, and why
-///   CONTINUE — what was I in the middle of, as business rather than chatter
-///   OVERVIEW — how is today going, on one card at the top
+///   OVERVIEW  — how is today going, on one card at the top
+///   SHOPFRONT — are my trips actually up there, and is anyone asking
+///   ACT       — what needs me right now, and why
+///   CONTINUE  — what was I in the middle of, as business rather than chatter
+///
+/// The shopfront is the part that makes this a marketplace app rather than a
+/// generic inbox: an operator's listings are their entire presence to a
+/// traveller, and until now the phone could not show them at all.
 ///
 /// Every line on this screen is written by the server: the attention model decides
 /// what is waiting, and the shared next-action resolver decides what state a
@@ -24,6 +30,7 @@ class HomeScreen extends StatefulWidget {
     required this.onOpenWork,
     required this.onQuickAction,
     required this.onOpenAccount,
+    required this.onOpenListings,
   });
 
   final void Function(String conversationId) onOpenThread;
@@ -31,6 +38,7 @@ class HomeScreen extends StatefulWidget {
   final void Function({String? kind}) onOpenWork;
   final void Function(String actionKey) onQuickAction;
   final VoidCallback onOpenAccount;
+  final VoidCallback onOpenListings;
 
   @override
   State<HomeScreen> createState() => HomeScreenState();
@@ -40,6 +48,14 @@ class HomeScreenState extends State<HomeScreen> {
   Map<String, dynamic>? _data;
   String? _error;
   bool _loading = true;
+
+  /// Listings load on their own and never block the screen.
+  ///
+  /// A tenant without `tours:read` — or a deployment that predates the endpoint
+  /// — simply has no shopfront strip; the rest of Home is unaffected. Home
+  /// failing because a secondary list 403'd would be the worse trade.
+  List<Listing> _listings = const [];
+  Map<String, dynamic> _listingSummary = const {};
 
   @override
   void initState() {
@@ -62,6 +78,21 @@ class HomeScreenState extends State<HomeScreen> {
         _error = error.message;
         _loading = false;
       });
+    }
+    await _loadListings();
+  }
+
+  Future<void> _loadListings() async {
+    if (!(Api.instance.session?.can('tours:read') ?? false)) return;
+    try {
+      final data = await Api.instance.tours();
+      if (!mounted) return;
+      setState(() {
+        _listings = ((data['items'] as List?) ?? const []).cast<Map<String, dynamic>>().map(Listing.new).toList();
+        _listingSummary = (data['summary'] as Map<String, dynamic>?) ?? const {};
+      });
+    } catch (_) {
+      // Deliberately silent: see the field comment.
     }
   }
 
@@ -166,7 +197,10 @@ class HomeScreenState extends State<HomeScreen> {
         MobileHeader(
           title: _greeting,
           subtitle: _subtitle(session.tenantName, attention),
-          initials: initialsOf(session.userName),
+          // The operator's own mark where the marketplace has one — this avatar
+          // is the business, not the person signed in.
+          avatarUrl: session.operatorLogoUrl,
+          initials: initialsOf(session.operatorName ?? session.tenantName),
           onAccountTap: widget.onOpenAccount,
           // The bell counts customers waiting for a reply and goes straight to
           // them — yours first if any of them are yours.
@@ -187,6 +221,20 @@ class HomeScreenState extends State<HomeScreen> {
                 // How the day is going, at a glance, before anything asks for a decision.
                 if (today.isNotEmpty) TodayCard(tiles: today, currency: session.currency).entrance(),
                 if (today.isNotEmpty) const SizedBox(height: 14),
+
+                // ── SHOPFRONT ──────────────────────────────────────────────────────
+                // What the marketplace is showing on this operator's behalf. It
+                // sits above the work because it is the reason the work arrives.
+                if (_listings.isNotEmpty) ...[
+                  GroupLabel(text: 'Your listings', action: 'View all', onAction: widget.onOpenListings),
+                  if (summaryLine(_listingSummary) case final line?)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 10),
+                      child: Text(line, style: Theme.of(context).textTheme.bodySmall),
+                    ),
+                  ListingStrip(listings: _listings),
+                  const SizedBox(height: 18),
+                ],
 
                 // ── ACT ────────────────────────────────────────────────────────────
                 if (attention.isNotEmpty) ...[

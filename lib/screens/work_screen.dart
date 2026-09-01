@@ -6,11 +6,18 @@ import '../core/workspace.dart';
 import '../widgets/primitives.dart';
 import '../widgets/skeleton.dart';
 import '../widgets/swipe_to_delete.dart';
+import 'quotation_sheet.dart';
 
 /// Everything in flight, grouped by what it is — and each row carries the step the
 /// server says comes next, so nobody has to work out which module to open.
 class WorkScreen extends StatefulWidget {
-  const WorkScreen({super.key, this.initialKind, required this.onCreate, this.onBack});
+  const WorkScreen({super.key, this.initialKind, required this.onCreate, this.onBack, this.onOpenAccount});
+
+  /// The account page, opened from the avatar in this screen's header.
+  ///
+  /// Every tab carries it, because the bottom bar no longer does: a destination
+  /// that is one tap from anywhere does not need a sixth of the bar as well.
+  final VoidCallback? onOpenAccount;
   final String? initialKind;
 
   /// Present only when this screen was PUSHED — see MobileHeader.onBack.
@@ -89,6 +96,9 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
     return Column(
       children: [
         MobileHeader(
+          avatarUrl: Api.instance.session?.operatorLogoUrl,
+          initials: initialsOf(Api.instance.session?.operatorName ?? Api.instance.session?.tenantName ?? ''),
+          onAccountTap: widget.onOpenAccount,
           title: 'Work',
           subtitle: _items.isEmpty ? 'Nothing is open right now' : '${_items.length} things in flight',
           onBack: widget.onBack,
@@ -106,8 +116,8 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
               labelPadding: const EdgeInsets.symmetric(horizontal: 14),
               indicatorSize: TabBarIndicatorSize.label,
               indicatorWeight: 3,
-              indicatorColor: Tone.blue(context),
-              labelColor: Tone.blue(context),
+              indicatorColor: Tone.accent(context),
+              labelColor: Tone.accent(context),
               unselectedLabelColor: muted,
               dividerHeight: 0,
               splashBorderRadius: BorderRadius.circular(10),
@@ -200,7 +210,10 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
                   child: WorkRow(
                     item: item,
                     onTap: () => _showDetail(context, item),
-                    onNext: item['next'] == null ? null : () => _showDetail(context, item),
+                    // The next action DOES the thing where we can. "Create
+                    // quotation" opening a read-only detail sheet was a button
+                    // that described work rather than starting it.
+                    onNext: item['next'] == null ? null : () => _next(context, item),
                   ),
                 ),
             ],
@@ -263,6 +276,66 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
         ),
       ),
     );
+  }
+
+  /// Act on the next step, or fall back to explaining it.
+  ///
+  /// Only quoting is done on the phone: it is the step that follows a
+  /// marketplace enquiry, it is time-critical, and the enquiry already carries
+  /// everything the quotation needs. Everything else still opens the detail
+  /// sheet and points at the portal, which is honest about where those records
+  /// are actually edited.
+  Future<void> _next(BuildContext context, Map<String, dynamic> item) async {
+    final next = item['next'] as Map<String, dynamic>?;
+    final customer = (item['customer'] ?? 'this customer').toString();
+
+    // A saved draft finishes here too: the phone that raised it can send it.
+    if (item['kind'] == 'quotation' && next?['key'] == 'send_quotation') {
+      await _sendQuotation(context, item['id'] as String, customer, (item['reference'] ?? '').toString());
+      return;
+    }
+
+    final isQuote = item['kind'] == 'enquiry' && (next?['key'] == 'quote' || next?['key'] == 'create_quotation');
+    if (!isQuote) {
+      _showDetail(context, item);
+      return;
+    }
+
+    final created = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => QuotationSheet(enquiryId: item['id'] as String, customerName: customer),
+    );
+    if (created == true) await load();
+  }
+
+  /// Confirm first: this puts a price in front of a customer, and a mis-tap on a
+  /// list row is not consent to do that.
+  Future<void> _sendQuotation(BuildContext context, String id, String customer, String reference) async {
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Send this quotation?'),
+        content: Text('$reference goes to $customer.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Not yet')),
+          FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: const Text('Send')),
+        ],
+      ),
+    );
+    if (go != true) return;
+    try {
+      await Api.instance.sendQuotation(id);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Sent to $customer.')));
+      await load();
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e is ApiException ? e.message : 'Could not send it. Try again.')));
+    }
   }
 
   /// The phone shows what it is and what comes next; the portal is where the full
@@ -340,7 +413,7 @@ class _TabLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selected = DefaultTextStyle.of(context).style.color == Tone.blue(context);
+    final selected = DefaultTextStyle.of(context).style.color == Tone.accent(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -350,7 +423,7 @@ class _TabLabel extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
             decoration: BoxDecoration(
-              color: selected ? Tone.blueWash(context) : Theme.of(context).dividerColor.withValues(alpha: 0.35),
+              color: selected ? Tone.accentWash(context) : Theme.of(context).dividerColor.withValues(alpha: 0.35),
               borderRadius: BorderRadius.circular(7),
             ),
             child: Text(
@@ -359,7 +432,7 @@ class _TabLabel extends StatelessWidget {
                 fontSize: 11.5,
                 height: 1.3,
                 fontWeight: FontWeight.w700,
-                color: selected ? Tone.blue(context) : Theme.of(context).textTheme.bodySmall?.color,
+                color: selected ? Tone.accent(context) : Theme.of(context).textTheme.bodySmall?.color,
               ),
             ),
           ),

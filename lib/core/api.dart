@@ -31,6 +31,9 @@ class Session {
     required this.role,
     required this.persona,
     required this.permissions,
+    this.operatorName,
+    this.operatorLogoUrl,
+    this.operatorVerified = false,
   });
 
   final String token;
@@ -45,6 +48,16 @@ class Session {
   final String persona;
   final List<String> permissions;
 
+  /// Who this business is ON THE MARKETPLACE.
+  ///
+  /// The tenant name is the account; the operator profile is the shopfront a
+  /// traveller sees, and they are not always the same words or the same mark.
+  /// Null for a tenant with no marketplace presence yet, which is why every
+  /// reader falls back to the account rather than assuming a shopfront.
+  final String? operatorName;
+  final String? operatorLogoUrl;
+  final bool operatorVerified;
+
   bool can(String permission) => permissions.contains(permission);
 
   Map<String, dynamic> toJson() => {
@@ -57,6 +70,9 @@ class Session {
     'role': role,
     'persona': persona,
     'permissions': permissions,
+    'operatorName': operatorName,
+    'operatorLogoUrl': operatorLogoUrl,
+    'operatorVerified': operatorVerified,
   };
 
   static Session fromJson(Map<String, dynamic> json) => Session(
@@ -69,6 +85,40 @@ class Session {
     role: (json['role'] ?? '') as String,
     persona: (json['persona'] ?? 'agent') as String,
     permissions: ((json['permissions'] ?? []) as List).map((e) => e.toString()).toList(),
+    operatorName: json['operatorName'] as String?,
+    operatorLogoUrl: json['operatorLogoUrl'] as String?,
+    operatorVerified: json['operatorVerified'] == true,
+  );
+
+  /// Distinguishes "leave this alone" from "set this to null".
+  ///
+  /// The operator fields are legitimately nullable — a profile can be removed,
+  /// a logo deleted — so a plain `?? this.field` would make them one-way: once
+  /// a logo had been seen, the phone could never be told it was gone.
+  static const _keep = Object();
+
+  Session copyWith({
+    String? tenantName,
+    String? currency,
+    String? workspace,
+    String? persona,
+    List<String>? permissions,
+    Object? operatorName = _keep,
+    Object? operatorLogoUrl = _keep,
+    Object? operatorVerified = _keep,
+  }) => Session(
+    token: token,
+    userName: userName,
+    userEmail: userEmail,
+    tenantName: tenantName ?? this.tenantName,
+    currency: currency ?? this.currency,
+    workspace: workspace ?? this.workspace,
+    role: role,
+    persona: persona ?? this.persona,
+    permissions: permissions ?? this.permissions,
+    operatorName: identical(operatorName, _keep) ? this.operatorName : operatorName as String?,
+    operatorLogoUrl: identical(operatorLogoUrl, _keep) ? this.operatorLogoUrl : operatorLogoUrl as String?,
+    operatorVerified: identical(operatorVerified, _keep) ? this.operatorVerified : operatorVerified == true,
   );
 }
 
@@ -218,6 +268,10 @@ class Api {
       final name = (tenant['name'] ?? '') as String;
       final workspace = (tenant['workspace'] ?? session.workspace) as String;
       final permissions = ((data['permissions'] ?? session.permissions) as List).map((e) => e.toString()).toList();
+      final operator = data['operator'] as Map<String, dynamic>?;
+      final operatorName = operator?['name'] as String?;
+      final operatorLogoUrl = operator?['logoUrl'] as String?;
+      final operatorVerified = operator?['verified'] == true;
 
       // Refresh on ANY change, not just a renamed business.
       //
@@ -231,20 +285,24 @@ class Api {
           currency != session.currency ||
           name != session.tenantName ||
           workspace != session.workspace ||
+          // A logo uploaded or a shopfront renamed after sign-in has to reach a
+          // phone that is already signed in, for the same reason permissions do.
+          operatorName != session.operatorName ||
+          operatorLogoUrl != session.operatorLogoUrl ||
+          operatorVerified != session.operatorVerified ||
           permissions.length != session.permissions.length ||
           !permissions.every(session.permissions.contains);
 
       if (changed) {
-        _session = Session(
-          token: session.token,
-          userName: session.userName,
-          userEmail: session.userEmail,
+        _session = session.copyWith(
           tenantName: name.isEmpty ? session.tenantName : name,
           currency: currency,
           workspace: workspace,
-          role: session.role,
           persona: (data['persona'] ?? session.persona) as String,
           permissions: permissions,
+          operatorName: operatorName,
+          operatorLogoUrl: operatorLogoUrl,
+          operatorVerified: operatorVerified,
         );
         unawaited(_persist());
       }
@@ -278,6 +336,62 @@ class Api {
   Future<Map<String, dynamic>> deleteWorkItem(String kind, String id) => _delete('${_workPath(kind)}/$id');
 
   Future<Map<String, dynamic>> restoreWorkItem(String kind, String id) => _post('${_workPath(kind)}/$id', const {});
+
+  // ── quotations ────────────────────────────────────────────────────────────
+  //
+  // The draft is a READ. Nothing is written until the operator has seen the
+  // number and chosen to send it, so opening the sheet and backing out of it
+  // leaves no half-made quotation behind.
+  Future<Map<String, dynamic>> quotationDraft(String enquiryId) => _get('/enquiries/$enquiryId/quotation-draft');
+
+  /// The server computes the total from the lines; the phone never sends one,
+  /// so a stale draft cannot quote a figure the server disagrees with.
+  /// Create a quotation.
+  ///
+  /// Pass [party] — adults, children and their rates — and the SERVER composes
+  /// the lines, using the same function the portal calls. The phone deliberately
+  /// does not build them: an adult/child split computed in two places is a split
+  /// that eventually disagrees with itself, on the one screen where disagreeing
+  /// costs money. [items] remains for anything with its own line structure.
+  Future<Map<String, dynamic>> createQuotation({
+    required String bookingRequestId,
+    List<Map<String, dynamic>>? items,
+    Map<String, dynamic>? party,
+    String? currency,
+    String? notes,
+    // Carried straight through from the enquiry so the quotation states the
+    // trip window and party size the customer actually asked about.
+    String? startDate,
+    String? endDate,
+    int? adults,
+    int? children,
+
+    /// ISO date. The quotation already has the column; the phone can now set it.
+    String? validUntil,
+    bool send = false,
+  }) => _post('/quotations', {
+    'bookingRequestId': bookingRequestId,
+    if (items != null) 'items': items,
+    if (party != null) 'party': party,
+    if (currency != null) 'currency': currency,
+    if (notes != null && notes.isNotEmpty) 'notes': notes,
+    if (startDate != null) 'startDate': startDate,
+    if (endDate != null) 'endDate': endDate,
+    if (adults != null) 'adults': adults,
+    if (children != null) 'children': children,
+    if (validUntil != null) 'validUntil': validUntil,
+    'send': send,
+  });
+
+  /// Send a quotation that already exists (a draft raised earlier, here or in
+  /// the portal). Creating and sending in one go is [createQuotation]'s `send`.
+  Future<Map<String, dynamic>> sendQuotation(String id) => _post('/quotations/$id/send', const {});
+
+  /// The operator's own listings, as they stand on the marketplace.
+  ///
+  /// Read-only: building a tour is a long, media-heavy job that belongs in the
+  /// portal. What the phone owes an operator is the state of their shopfront.
+  Future<Map<String, dynamic>> tours() => _get('/tours');
 
   // ── trips ─────────────────────────────────────────────────────────────────
   //

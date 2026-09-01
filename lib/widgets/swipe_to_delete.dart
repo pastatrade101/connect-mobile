@@ -71,7 +71,10 @@ class _SwipeToDeleteState extends State<SwipeToDelete> with SingleTickerProvider
                       children: [
                         Icon(Icons.delete_outline_rounded, color: Colors.white, size: 20),
                         SizedBox(height: 2),
-                        Text('Delete', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                        Text(
+                          'Delete',
+                          style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                        ),
                       ],
                     ),
                   ),

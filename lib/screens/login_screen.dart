@@ -98,7 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     const TextSpan(text: 'Makutano '),
                                     TextSpan(
                                       text: 'Connect',
-                                      style: TextStyle(color: Tone.blue(context)),
+                                      style: TextStyle(color: Tone.accent(context)),
                                     ),
                                   ],
                                 ),

@@ -143,11 +143,11 @@ class _TripScreenState extends State<TripScreen> {
                   children: [
                     for (final option in suggestions)
                       ActionChip(
-                        label: Text(option, style: TextStyle(color: Tone.blue(sheetContext))),
+                        label: Text(option, style: TextStyle(color: Tone.accent(sheetContext))),
                         // Explicit tokens. A bare Material chip takes the seed's
                         // neutral ramp rather than Brand — the one unstyled
                         // control in the app, and near-illegible in dark.
-                        backgroundColor: Tone.wash(sheetContext, Tone.blue(sheetContext)),
+                        backgroundColor: Tone.wash(sheetContext, Tone.accent(sheetContext)),
                         side: BorderSide(color: Tone.line(sheetContext)),
                         onPressed: () => Navigator.pop(sheetContext, option),
                       ),
@@ -237,10 +237,10 @@ class _TripScreenState extends State<TripScreen> {
                   for (final m in members)
                     ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: Tone.wash(sheetContext, Tone.blue(sheetContext)),
+                        backgroundColor: Tone.wash(sheetContext, Tone.accent(sheetContext)),
                         child: Text(
                           initialsOf((m['name'] ?? '').toString()),
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Tone.blue(sheetContext)),
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Tone.accent(sheetContext)),
                         ),
                       ),
                       title: Text((m['name'] ?? '').toString()),

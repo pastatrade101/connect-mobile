@@ -16,7 +16,13 @@ import '../widgets/trip_readiness.dart';
 /// trip can depart. A rule reimplemented here is a rule that drifts until the
 /// next app-store release.
 class TripsScreen extends StatefulWidget {
-  const TripsScreen({super.key, required this.onOpenTrip});
+  const TripsScreen({super.key, required this.onOpenTrip, this.onOpenAccount});
+
+  /// The account page, opened from the avatar in this screen's header.
+  ///
+  /// Every tab carries it, because the bottom bar no longer does: a destination
+  /// that is one tap from anywhere does not need a sixth of the bar as well.
+  final VoidCallback? onOpenAccount;
 
   final void Function(String tripId) onOpenTrip;
 
@@ -93,7 +99,14 @@ class TripsScreenState extends State<TripsScreen> {
 
     return Column(
       children: [
-        MobileHeader(title: 'Trips', subtitle: _summary, subtitleTone: _blocked > 0 ? Tone.danger(context) : null),
+        MobileHeader(
+          title: 'Trips',
+          subtitle: _summary,
+          subtitleTone: _blocked > 0 ? Tone.danger(context) : null,
+          avatarUrl: Api.instance.session?.operatorLogoUrl,
+          initials: initialsOf(Api.instance.session?.operatorName ?? Api.instance.session?.tenantName ?? ''),
+          onAccountTap: widget.onOpenAccount,
+        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
           child: Row(
@@ -172,7 +185,7 @@ class _MineToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = Tone.blue(context);
+    final accent = Tone.accent(context);
     return PressableRow(
       onTap: onTap,
       child: AnimatedContainer(
@@ -222,7 +235,7 @@ class _Segmented extends StatelessWidget {
                       // darker track only reads as chosen in light mode; in dark
                       // the two tokens swap roles and the cue inverts, so the
                       // selected tab looks like the unselected ones.
-                      color: selected == option.key ? Tone.wash(context, Tone.blue(context)) : Colors.transparent,
+                      color: selected == option.key ? Tone.wash(context, Tone.accent(context)) : Colors.transparent,
                       borderRadius: BorderRadius.circular(9),
                     ),
                     child: Text(
@@ -233,7 +246,7 @@ class _Segmented extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: selected == option.key ? Tone.blue(context) : Tone.muted(context),
+                        color: selected == option.key ? Tone.accent(context) : Tone.muted(context),
                       ),
                     ),
                   ),

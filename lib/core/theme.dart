@@ -31,28 +31,41 @@ class AppTheme {
 
 /// The look, in one place.
 ///
-/// Taken from the Connect portal rather than invented: the same brand blue, the same
-/// slate neutrals with a blue bias, and the same WhatsApp-derived chat surfaces — so
-/// somebody moving between the browser and the phone recognises the product.
+/// Taken from MAKUTANO JOURNEYS — the marketplace an operator's travellers
+/// actually see — rather than from the old Connect portal blue. This is one
+/// marketplace with an operator's side and a traveller's side, and it should not
+/// change identity when the operator opens their phone: the same terracotta, the
+/// same warm paper ground, the same verified green. COLOUR only — the site's
+/// Cormorant/Manrope pairing stays on the web, where the type is read at desk
+/// distance.
+///
+/// The chat surfaces are the one exception and stay as they were: those are
+/// WhatsApp's colours, not ours, and a thread that does not look like WhatsApp
+/// reads as a different conversation.
 class Brand {
   const Brand._();
 
   // ── light ───────────────────────────────────────────────────────────────────
-  static const blue = Color(0xFF1C84EE);
-  static const blueDark = Color(0xFF1565C0);
-  static const blueWash = Color(0xFFE8F1FD);
+  //
+  // The marketplace's own values — --mk-accent, --mk-verified, and the paper the
+  // site sits on. Changing one here means changing it on the website too.
+  static const accent = Color(0xFFB4532A);
+  static const accentDark = Color(0xFF9D4523);
+  static const accentWash = Color(0xFFF6EBE4);
 
-  static const ink = Color(0xFF101A2B);
-  static const inkSoft = Color(0xFF3D4A5C);
-  static const inkFaint = Color(0xFF6B7A8D);
+  static const ink = Color(0xFF2B2B28);
+  static const inkSoft = Color(0xFF4A453E);
+  static const inkFaint = Color(0xFF6F6A63);
 
-  static const line = Color(0xFFE3E8EF);
+  static const line = Color(0xFFE7E2D9);
   static const surface = Color(0xFFFFFFFF);
-  static const ground = Color(0xFFF5F7FA);
+  static const ground = Color(0xFFF7F5F1);
 
-  static const success = Color(0xFF0E8A5F);
-  static const warning = Color(0xFFB07100);
-  static const danger = Color(0xFFD1352B);
+  /// The marketplace's verified green: the same colour that says "Verified by
+  /// Makutano Journeys" on a listing, so it means the same thing here.
+  static const success = Color(0xFF3D6B52);
+  static const warning = Color(0xFFA9722A);
+  static const danger = Color(0xFFB3402F);
 
   // Chat surfaces, matching the portal's thread view.
   static const chatGround = Color(0xFFEFE7DE);
@@ -62,22 +75,25 @@ class Brand {
 
   // ── dark ────────────────────────────────────────────────────────────────────
   //
-  // A settled black to sit on, three steps of surface above it, and accents that
+  // A settled ground to sit on, three steps of surface above it, and accents that
   // are BRIGHTER than their light-mode twins rather than the same colour dimmed.
-  // A #0E8A5F green is readable on white and nearly invisible on black; the dark
+  // A #3D6B52 green is readable on paper and nearly invisible on black; the dark
   // palette therefore has its own values, chosen for contrast on this ground.
-  static const darkGround = Color(0xFF07090C);
-  static const darkSurface = Color(0xFF12161C);
-  static const darkPanel = Color(0xFF1A2029);
-  static const darkLine = Color(0xFF283240);
-  static const darkInk = Color(0xFFF3F6FA);
-  static const darkInkSoft = Color(0xFF9BAABA);
+  //
+  // Warm, because the light palette is warm: a neutral-blue night mode beside a
+  // terracotta day mode reads as two different apps.
+  static const darkGround = Color(0xFF13110E);
+  static const darkSurface = Color(0xFF1C1A16);
+  static const darkPanel = Color(0xFF24211B);
+  static const darkLine = Color(0xFF332F28);
+  static const darkInk = Color(0xFFF5F2EC);
+  static const darkInkSoft = Color(0xFFA9A296);
 
-  static const darkBlue = Color(0xFF4CA3FF);
-  static const darkBlueWash = Color(0xFF10263D);
-  static const darkSuccess = Color(0xFF35D48A);
-  static const darkWarning = Color(0xFFFFB224);
-  static const darkDanger = Color(0xFFFF6B61);
+  static const darkAccent = Color(0xFFE08A5F);
+  static const darkAccentWash = Color(0xFF3A241A);
+  static const darkSuccess = Color(0xFF6FBF92);
+  static const darkWarning = Color(0xFFE0A551);
+  static const darkDanger = Color(0xFFF08070);
 
   static const darkChatGround = Color(0xFF0A0F14);
   static const darkBubbleIn = Color(0xFF1B242E);
@@ -100,9 +116,9 @@ BoxDecoration appBackground(BuildContext context) {
       end: Alignment.bottomRight,
       stops: [0.0, 0.45, 1.0],
       colors: [
-        Color(0xFF0B1524), // a blue lift where the header sits
-        Color(0xFF07090C), // the settled black through the middle
-        Color(0xFF12101B), // a violet warmth under the nav
+        Color(0xFF1E1811), // a warm lift where the header sits
+        Color(0xFF13110E), // the settled ground through the middle
+        Color(0xFF1A1310), // a last ember under the nav
       ],
     ),
   );
@@ -118,8 +134,8 @@ class Tone {
 
   static bool isDark(BuildContext c) => Theme.of(c).brightness == Brightness.dark;
 
-  static Color blue(BuildContext c) => isDark(c) ? Brand.darkBlue : Brand.blue;
-  static Color blueWash(BuildContext c) => isDark(c) ? Brand.darkBlueWash : Brand.blueWash;
+  static Color accent(BuildContext c) => isDark(c) ? Brand.darkAccent : Brand.accent;
+  static Color accentWash(BuildContext c) => isDark(c) ? Brand.darkAccentWash : Brand.accentWash;
   static Color success(BuildContext c) => isDark(c) ? Brand.darkSuccess : Brand.success;
   static Color warning(BuildContext c) => isDark(c) ? Brand.darkWarning : Brand.warning;
   static Color danger(BuildContext c) => isDark(c) ? Brand.darkDanger : Brand.danger;
@@ -179,10 +195,22 @@ class NavBar {
 ThemeData buildTheme({required Brightness brightness}) {
   final dark = brightness == Brightness.dark;
   final scheme = ColorScheme.fromSeed(
-    seedColor: Brand.blue,
+    seedColor: Brand.accent,
     brightness: brightness,
-    primary: dark ? Brand.darkBlue : Brand.blue,
+    primary: dark ? Brand.darkAccent : Brand.accent,
     surface: dark ? Brand.darkSurface : Brand.surface,
+    /*
+     * Material derives its container surfaces from the seed, and a terracotta
+     * seed tints them PINK — a bottom sheet came up the colour of blush rather
+     * than paper. The marketplace's neutrals are warm greys, not tinted reds, so
+     * the container steps are named rather than derived.
+     */
+    surfaceContainerLowest: dark ? Brand.darkGround : Brand.surface,
+    surfaceContainerLow: dark ? Brand.darkSurface : Brand.surface,
+    surfaceContainer: dark ? Brand.darkSurface : Brand.ground,
+    surfaceContainerHigh: dark ? Brand.darkPanel : Brand.ground,
+    surfaceContainerHighest: dark ? Brand.darkPanel : const Color(0xFFEFEBE4),
+    outlineVariant: dark ? Brand.darkLine : Brand.line,
   );
 
   final base = ThemeData(useMaterial3: true, colorScheme: scheme);
@@ -220,6 +248,10 @@ ThemeData buildTheme({required Brightness brightness}) {
       ),
     ),
     dividerTheme: DividerThemeData(color: dark ? Brand.darkLine : Brand.line, thickness: 1, space: 1),
+    // The system face, at the sizes this app has always used. The marketplace's
+    // Cormorant/Manrope pairing is deliberately NOT carried over: the palette is
+    // what makes the two feel like one product, and a display serif set at phone
+    // sizes costs readability in daylight that a colour swap does not.
     textTheme: base.textTheme
         .apply(bodyColor: onGround, displayColor: onGround)
         .copyWith(
@@ -259,17 +291,29 @@ ThemeData buildTheme({required Brightness brightness}) {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: dark ? Brand.darkBlue : Brand.blue, width: 1.6),
+        borderSide: BorderSide(color: dark ? Brand.darkAccent : Brand.accent, width: 1.6),
       ),
       labelStyle: TextStyle(color: muted, fontSize: 14),
       hintStyle: TextStyle(color: muted, fontSize: 15),
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: dark ? Brand.darkSurface : Brand.surface,
-      indicatorColor: dark ? Brand.darkBlueWash : Brand.blueWash,
+      indicatorColor: dark ? Brand.darkAccentWash : Brand.accentWash,
       height: 64,
       labelTextStyle: WidgetStatePropertyAll(TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: muted)),
       elevation: 0,
+    ),
+    // Sheets and dialogs sit on paper, not on a tinted container.
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: dark ? Brand.darkSurface : Brand.surface,
+      surfaceTintColor: Colors.transparent,
+      dragHandleColor: dark ? Brand.darkLine : Brand.line,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: dark ? Brand.darkSurface : Brand.surface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,

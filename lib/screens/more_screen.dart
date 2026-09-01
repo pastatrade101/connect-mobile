@@ -13,8 +13,15 @@ import '../widgets/skeleton.dart';
 /// genuinely belongs on a bigger screen. Nothing appears here that this person's
 /// permissions could not use.
 class MoreScreen extends StatefulWidget {
-  const MoreScreen({super.key, required this.onSignedOut});
+  const MoreScreen({super.key, required this.onSignedOut, this.onBack});
   final VoidCallback onSignedOut;
+
+  /// Set when this arrives as a pushed screen rather than a tab.
+  ///
+  /// An operator reaches it from the avatar in the header, because the bottom
+  /// bar has five slots and a destination already reachable in one tap is not
+  /// worth one of them.
+  final VoidCallback? onBack;
 
   @override
   State<MoreScreen> createState() => _MoreScreenState();
@@ -80,7 +87,7 @@ class _MoreScreenState extends State<MoreScreen> {
     // Header outside the scroll view, so it stays put like Home's and Inbox's.
     return Column(
       children: [
-        MobileHeader(title: 'More', subtitle: session.tenantName),
+        MobileHeader(title: 'More', subtitle: session.tenantName, onBack: widget.onBack),
         Expanded(
           child: ListView(
             // Clear the floating nav, raised + included.
@@ -90,13 +97,10 @@ class _MoreScreenState extends State<MoreScreen> {
                 children: [
                   ListTile(
                     minVerticalPadding: 14,
-                    leading: CircleAvatar(
+                    leading: Avatar(
+                      url: session.operatorLogoUrl,
+                      initials: initialsOf(session.operatorName ?? session.tenantName),
                       radius: 22,
-                      backgroundColor: Tone.blueWash(context),
-                      child: Text(
-                        initialsOf(session.userName),
-                        style: TextStyle(color: Tone.blue(context), fontWeight: FontWeight.w700, fontSize: 15),
-                      ),
                     ),
                     title: Text(session.userName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15.5)),
                     subtitle: Text(session.userEmail, style: Theme.of(context).textTheme.bodySmall),
@@ -137,7 +141,7 @@ class _MoreScreenState extends State<MoreScreen> {
                           showSelectedIcon: false,
                           onSelectionChanged: (next) => AppTheme.set(next.first),
                           style: SegmentedButton.styleFrom(
-                            selectedBackgroundColor: Tone.blue(context),
+                            selectedBackgroundColor: Tone.accent(context),
                             selectedForegroundColor: Colors.white,
                             side: BorderSide(color: Tone.line(context)),
                             textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),

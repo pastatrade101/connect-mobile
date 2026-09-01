@@ -11,8 +11,14 @@ import '../widgets/rive_art.dart';
 /// The chat list. Same three filters as the portal, same meaning: "You:" is who
 /// spoke last, the chip on the right is who owns the thread.
 class InboxScreen extends StatefulWidget {
-  const InboxScreen({super.key, required this.onOpenThread});
+  const InboxScreen({super.key, required this.onOpenThread, this.onOpenAccount});
   final void Function(String conversationId) onOpenThread;
+
+  /// The account page, opened from the avatar in this screen's header.
+  ///
+  /// Every tab carries it, because the bottom bar no longer does: a destination
+  /// that is one tap from anywhere does not need a sixth of the bar as well.
+  final VoidCallback? onOpenAccount;
 
   @override
   State<InboxScreen> createState() => InboxScreenState();
@@ -83,6 +89,9 @@ class InboxScreenState extends State<InboxScreen> {
     return Column(
       children: [
         MobileHeader(
+          avatarUrl: Api.instance.session?.operatorLogoUrl,
+          initials: initialsOf(Api.instance.session?.operatorName ?? Api.instance.session?.tenantName ?? ''),
+          onAccountTap: widget.onOpenAccount,
           title: 'Inbox',
           subtitle: _threads.isEmpty
               ? 'Conversations appear as customers write in'
@@ -187,9 +196,9 @@ class _FilterChip extends StatelessWidget {
         duration: const Duration(milliseconds: 140),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? Tone.blue(context) : (dark ? Brand.darkPanel : Brand.surface),
+          color: selected ? Tone.accent(context) : (dark ? Brand.darkPanel : Brand.surface),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: selected ? Tone.blue(context) : (dark ? Brand.darkLine : Brand.line)),
+          border: Border.all(color: selected ? Tone.accent(context) : (dark ? Brand.darkLine : Brand.line)),
         ),
         child: Text(
           label,
@@ -227,10 +236,10 @@ class _ThreadTile extends StatelessWidget {
         tag: 'customer-${thread['id']}',
         child: CircleAvatar(
           radius: 24,
-          backgroundColor: Tone.blueWash(context),
+          backgroundColor: Tone.accentWash(context),
           child: Text(
             initialsOf(name),
-            style: TextStyle(color: Tone.blue(context), fontWeight: FontWeight.w700, fontSize: 15),
+            style: TextStyle(color: Tone.accent(context), fontWeight: FontWeight.w700, fontSize: 15),
           ),
         ),
       ),

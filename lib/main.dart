@@ -11,6 +11,7 @@ import 'core/workspace.dart';
 import 'screens/create_enquiry_sheet.dart';
 import 'screens/home_screen.dart';
 import 'screens/inbox_screen.dart';
+import 'screens/listings.dart';
 import 'screens/login_screen.dart';
 import 'screens/more_screen.dart';
 import 'screens/thread_screen.dart';
@@ -107,11 +108,18 @@ class _MakutanoAppState extends State<MakutanoApp> {
   }
 }
 
-/// Home · Inbox · + · Work · More.
+/// Home · Inbox · + · Trips · Work.
 ///
 /// Five destinations chosen from what staff do all day, with creation in the middle
 /// where a thumb reaches. Anything the workspace or the permissions cannot use is
 /// not rendered at all — the tab simply does not exist for that person.
+///
+/// The account page is NOT one of them. It is the avatar in every header, and a
+/// destination already one tap away does not need a second of five slots on a
+/// phone — so for an operator the last slot carries the work feed instead, which
+/// otherwise had no tab at all. Someone without trips still gets it as a tab,
+/// because Work already owns the fourth slot for them and there is nothing else
+/// to put in the fifth.
 class Shell extends StatefulWidget {
   const Shell({super.key});
 
@@ -159,36 +167,66 @@ class _ShellState extends State<Shell> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _inboxKey.currentState?.applyFilter(filter));
   }
 
-  void _openWork({String? kind}) {
-    // When Trips owns the fourth tab, the work feed becomes a pushed screen
-    // rather than disappearing.
-    if (_tripsTab) {
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => Scaffold(
-            backgroundColor: Colors.transparent,
-            body: DecoratedBox(
-              decoration: appBackground(context),
-              child: SafeArea(
-                bottom: false,
-                child: Builder(
-                  builder: (routeContext) => WorkScreen(
-                    onCreate: _runAction,
-                    onBack: () => Navigator.of(routeContext).pop(),
-                  ),
-                ),
-              ),
+  /// The full shopfront, pushed rather than given a tab.
+  ///
+  /// Home already carries the listings an operator looks at daily; this is the
+  /// rest of them, and it does not earn a permanent seat in a four-item nav.
+  void _openListings() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.transparent,
+          body: DecoratedBox(
+            decoration: appBackground(context),
+            child: SafeArea(
+              bottom: false,
+              child: Builder(builder: (routeContext) => ListingsScreen(onBack: () => Navigator.of(routeContext).pop())),
             ),
           ),
         ),
-      );
-      return;
-    }
-    setState(() => _tab = 3);
+      ),
+    );
+  }
+
+  /// Which slot the work feed lives in — the fifth for an operator, the fourth
+  /// for everyone else, because Trips takes the fourth when it is relevant.
+  int get _workTab => _tripsTab ? 4 : 3;
+
+  void _openWork({String? kind}) {
+    setState(() => _tab = _workTab);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _workKey.currentState?.focusKind(kind);
       _workKey.currentState?.load();
     });
+  }
+
+  /// The account page, from the avatar in a header.
+  ///
+  /// A tab where there is a slot for one, a pushed screen where the work feed
+  /// took it. Either way the avatar is the only way in, which is what freed the
+  /// slot in the first place.
+  void _openAccount() {
+    if (!_tripsTab) {
+      setState(() => _tab = 4);
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.transparent,
+          body: DecoratedBox(
+            decoration: appBackground(context),
+            child: SafeArea(
+              bottom: false,
+              child: Builder(
+                builder: (routeContext) =>
+                    MoreScreen(onSignedOut: _signedOut, onBack: () => Navigator.of(routeContext).pop()),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _runAction(String key) {
@@ -264,15 +302,18 @@ class _ShellState extends State<Shell> {
                 onOpenThread: _openThread,
                 onOpenInbox: _openInbox,
                 onOpenWork: _openWork,
+                onOpenListings: _openListings,
                 onQuickAction: _runAction,
-                onOpenAccount: () => setState(() => _tab = 4),
+                onOpenAccount: _openAccount,
               ),
-              InboxScreen(key: _inboxKey, onOpenThread: _openThread),
+              InboxScreen(key: _inboxKey, onOpenThread: _openThread, onOpenAccount: _openAccount),
               const SizedBox.shrink(), // the centre button opens a sheet, never a page
               _tripsTab
-                  ? TripsScreen(key: _tripsKey, onOpenTrip: _openTrip)
-                  : WorkScreen(key: _workKey, onCreate: _runAction),
-              MoreScreen(onSignedOut: _signedOut),
+                  ? TripsScreen(key: _tripsKey, onOpenTrip: _openTrip, onOpenAccount: _openAccount)
+                  : WorkScreen(key: _workKey, onCreate: _runAction, onOpenAccount: _openAccount),
+              _tripsTab
+                  ? WorkScreen(key: _workKey, onCreate: _runAction, onOpenAccount: _openAccount)
+                  : MoreScreen(onSignedOut: _signedOut),
             ],
           ),
         ),
@@ -366,11 +407,14 @@ class _ShellState extends State<Shell> {
                               },
                             ),
                             _NavItem(
-                              icon: Icons.more_horiz_rounded,
-                              activeIcon: Icons.more_horiz_rounded,
-                              label: 'More',
+                              icon: _tripsTab ? Icons.assignment_outlined : Icons.more_horiz_rounded,
+                              activeIcon: _tripsTab ? Icons.assignment_rounded : Icons.more_horiz_rounded,
+                              label: _tripsTab ? 'Work' : 'More',
                               selected: _tab == 4,
-                              onTap: () => setState(() => _tab = 4),
+                              onTap: () {
+                                if (_tripsTab) return _openWork();
+                                setState(() => _tab = 4);
+                              },
                             ),
                           ],
                         ),
@@ -408,7 +452,7 @@ class _CreateButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final blue = Tone.blue(context);
+    final blue = Tone.accent(context);
     final dark = Tone.isDark(context);
 
     return Semantics(
@@ -465,7 +509,7 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = Tone.blue(context);
+    final accent = Tone.accent(context);
     final tint = selected ? accent : Tone.muted(context);
 
     // Equal flex across all five slots — the four tabs and the empty middle — is
