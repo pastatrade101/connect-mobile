@@ -20,3 +20,6 @@ lib/firebase_options.dart
 android/key.properties
 *.jks
 *.keystore
+
+# Flutter tool crash dumps: local paths and device ids, never useful to anyone else.
+*.log
