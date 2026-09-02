@@ -76,15 +76,11 @@ you are starting with Android; nothing else depends on it.
 12. On the production server, add it to Connect's `.env` and restart:
 
     ```bash
-    # SSH into the Connect production host, then:
+    ssh -i ~/.ssh/makutano_connect_deploy -p 2807 makutano@194.163.139.108
     cd /home/makutano/app/services/connect
     echo "FCM_SERVICE_ACCOUNT=<paste the base64 here>" >> .env
     docker compose up -d
     ```
-
-    The host, port, user and deploy key are deliberately not written here — this
-    repository is public. They are in `makutano-connect/docs/PROJECTS.md`, which
-    is not.
 
     No migration is needed — the `device_tokens` table already exists in production.
 
