@@ -8,6 +8,7 @@ ios/Flutter/ephemeral/
 android/.gradle/
 android/local.properties
 *.iml
+.idea/
 .DS_Store
 
 # Firebase project identity — supplied per deployment, never committed.
