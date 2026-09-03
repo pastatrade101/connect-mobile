@@ -8,6 +8,7 @@ import '../core/theme.dart';
 import '../widgets/primitives.dart';
 import '../widgets/skeleton.dart';
 import '../widgets/trip_readiness.dart';
+import 'tracking_map_screen.dart';
 
 /// One trip, set up from the field.
 ///
@@ -45,6 +46,9 @@ class _TripScreenState extends State<TripScreen> {
         _data = data;
         _loading = false;
       });
+      // After the trip, never blocking it: the screen is already usable and the
+      // vehicle's position simply arrives when it arrives.
+      unawaited(_loadTracking());
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -56,6 +60,24 @@ class _TripScreenState extends State<TripScreen> {
 
   Map<String, dynamic> get _trip => (_data?['trip'] ?? const {}) as Map<String, dynamic>;
   Map<String, dynamic> get _readiness => (_data?['readiness'] ?? const {}) as Map<String, dynamic>;
+
+  /// Where the vehicle is. Loaded separately from the trip and allowed to fail
+  /// on its own: a tracking server having a bad day must never take the trip
+  /// screen with it.
+  Map<String, dynamic>? _tracking;
+
+  Future<void> _loadTracking() async {
+    // Only a REGISTRY vehicle can be tracked. A typed-in name is not a tracker,
+    // and asking about it would invite an answer that sounds like one.
+    if (_trip['vehicleId'] == null) return;
+    try {
+      final data = await Api.instance.tripTracking(widget.tripId);
+      if (mounted) setState(() => _tracking = data);
+    } catch (_) {
+      // Silent by design. The card simply does not claim to know anything, which
+      // is the truth, and no SnackBar interrupts what the operator came here for.
+    }
+  }
   Map<String, dynamic> get _can => (_data?['can'] ?? const {}) as Map<String, dynamic>;
   bool get _canWrite => _can['write'] == true;
 
@@ -481,6 +503,8 @@ class _TripScreenState extends State<TripScreen> {
             }),
           ).entrance(),
 
+        if (_trip['vehicleId'] != null) _trackingCard(context).entrance(index: 1),
+
         const GroupLabel(text: 'Setup'),
         GroupedList(
           children: [
@@ -637,6 +661,105 @@ class _TripScreenState extends State<TripScreen> {
       if ((t['dietaryRequirements'] ?? '').toString().isNotEmpty) t['dietaryRequirements'].toString(),
     ];
     return bits.join(' · ');
+  }
+
+
+  /// Where the vehicle is, and the way through to the map.
+  ///
+  /// Two clocks, never conflated: the age of the FIX (in the sentence) and the
+  /// age of our KNOWLEDGE ("checked …"). And the map is only offered when there
+  /// is a position to show — a button leading to an empty grey map reads as a
+  /// broken app rather than as an unreporting tracker.
+  Widget _trackingCard(BuildContext context) {
+    final t = _tracking;
+    final state = t?['state'] as String?;
+    final position = t?['position'] as Map<String, dynamic>?;
+    final tone = switch (state) {
+      'LIVE' || 'RECENT' => Tone.success(context),
+      'STALE' || 'UNAVAILABLE' => Tone.warning(context),
+      _ => Tone.muted(context),
+    };
+    final recordedAt = DateTime.tryParse(position?['recordedAt'] as String? ?? '');
+    final speed = (position?['speedKph'] as num?)?.round();
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 2),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: Tone.surface(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Tone.line(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.directions_car_outlined, size: 17, color: Tone.muted(context)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  (_trip['vehicle'] as String?) ?? 'Vehicle',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              // Before the first reply we know nothing, and say so. Printing a
+              // state here would be inventing one.
+              if (t == null)
+                Text(
+                  'Checking…',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Tone.muted(context)),
+                )
+              else
+                Row(
+                  children: [
+                    Container(width: 7, height: 7, decoration: BoxDecoration(color: tone, shape: BoxShape.circle)),
+                    const SizedBox(width: 6),
+                    Text(
+                      t['label'] as String? ?? '',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelMedium?.copyWith(color: tone, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+          if (recordedAt != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              // Time first, place second — an operator reads left to right and
+              // stops at the first reassuring word.
+              state == 'LIVE' && (speed ?? 0) > 3
+                  ? 'Moving now, $speed km/h.'
+                  : state == 'LIVE'
+                  ? 'Stopped, reporting normally.'
+                  : 'Last reported ${relativeTime(recordedAt)}.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Tone.muted(context)),
+            ),
+          ],
+          if (position != null) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => TrackingMapScreen(
+                      tripId: widget.tripId,
+                      vehicleLabel: _trip['vehicle'] as String?,
+                    ),
+                  ),
+                ),
+                icon: const Icon(Icons.map_outlined, size: 18),
+                label: const Text('View on map'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   List<({String field, String label, String? value, IconData icon, String hint, bool critical})> get _setupRows => [

@@ -403,6 +403,15 @@ class Api {
 
   Future<Map<String, dynamic>> trip(String id) => _get('/trips/$id');
 
+  /// Where this trip's vehicle is.
+  ///
+  /// A device identifier is never sent — the server is asked about a TRIP and
+  /// walks to the tracker itself, so the phone never holds anything that could
+  /// address another operator's vehicle. History is fetched only when the map is
+  /// actually opened; the card polls the position alone.
+  Future<Map<String, dynamic>> tripTracking(String id, {bool history = false}) =>
+      _get('/trips/$id/tracking', {if (history) 'history': '1'});
+
   /// Set one field of a trip's setup. Returns the trip's FRESH readiness.
   Future<Map<String, dynamic>> updateTrip(String id, Map<String, dynamic> patch) => _patch('/trips/$id', patch);
 

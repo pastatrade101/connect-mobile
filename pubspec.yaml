@@ -17,6 +17,12 @@ dependencies:
   firebase_core: ^4.14.0
   firebase_messaging: ^16.6.0
   flutter_animate: ^4.5.2
+  # Live vehicle tracking. flutter_map is pure Dart and needs no API key, which is
+  # why the web side chose Leaflet + OpenStreetMap for the same job — one tile
+  # source, one licence, nothing to bill.
+  flutter_map: ^8.3.2
+  latlong2: ^0.10.1
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:
