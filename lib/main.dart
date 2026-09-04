@@ -219,9 +219,12 @@ class _ShellState extends State<Shell> {
             decoration: appBackground(context),
             child: SafeArea(
               bottom: false,
-              child: Builder(
-                builder: (routeContext) => ListingsScreen(
-                  onBack: () => Navigator.of(routeContext).pop(),
+              // A pushed route: the shell's cap does not reach it.
+              child: ContentWidth(
+                child: Builder(
+                  builder: (routeContext) => ListingsScreen(
+                    onBack: () => Navigator.of(routeContext).pop(),
+                  ),
                 ),
               ),
             ),
@@ -261,10 +264,13 @@ class _ShellState extends State<Shell> {
             decoration: appBackground(context),
             child: SafeArea(
               bottom: false,
-              child: Builder(
-                builder: (routeContext) => MoreScreen(
-                  onSignedOut: _signedOut,
-                  onBack: () => Navigator.of(routeContext).pop(),
+              // A pushed route: the shell's cap does not reach it.
+              child: ContentWidth(
+                child: Builder(
+                  builder: (routeContext) => MoreScreen(
+                    onSignedOut: _signedOut,
+                    onBack: () => Navigator.of(routeContext).pop(),
+                  ),
                 ),
               ),
             ),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../core/api.dart';
 import '../core/motion.dart';
+import '../core/responsive.dart';
 import '../core/theme.dart';
 import '../widgets/primitives.dart';
 import '../widgets/skeleton.dart';
@@ -438,26 +439,29 @@ class _TripScreenState extends State<TripScreen> {
               ),
           ],
         ),
+        // A pushed route, so the shell's cap never reaches it — see ThreadScreen.
         body: SafeArea(
           bottom: false,
-          child: _loading
-              ? const SkeletonRows(rows: 6, disc: false)
-              : _error != null
-              ? TeachingEmptyState(
-                  icon: Icons.cloud_off_rounded,
-                  title: 'Could not load this trip',
-                  body: _error!,
-                  actionLabel: 'Try again',
-                  onAction: () {
-                    setState(() {
-                      _loading = true;
-                      _error = null;
-                    });
-                    _load();
-                  },
-                )
-              : _body(context),
-        ),
+          child: ContentWidth(
+            child: _loading
+                ? const SkeletonRows(rows: 6, disc: false)
+                : _error != null
+                ? TeachingEmptyState(
+                    icon: Icons.cloud_off_rounded,
+                    title: 'Could not load this trip',
+                    body: _error!,
+                    actionLabel: 'Try again',
+                    onAction: () {
+                      setState(() {
+                        _loading = true;
+                        _error = null;
+                      });
+                      _load();
+                    },
+                  )
+                : _body(context),
+          ),
+          )
       ),
     );
   }

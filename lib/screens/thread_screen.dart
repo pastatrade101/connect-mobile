@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../core/api.dart';
+import '../core/responsive.dart';
 import '../core/theme.dart';
 import '../widgets/skeleton.dart';
 
@@ -152,63 +153,71 @@ class _ThreadScreenState extends State<ThreadScreen> {
       ),
       // The composer floats over the thread rather than sitting in a bar below it,
       // so the conversation runs the full height of the screen and blurs beneath it.
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              if (assignedToMe)
-                Container(
-                  width: double.infinity,
-                  color: dark ? Brand.darkSurface : Brand.surface,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Text(
-                    'Assigned to you',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+      //
+      // Capped here rather than in the shell: a thread is a PUSHED route, so it
+      // never passes through the shell's cap. Left full width on an iPad the
+      // bubbles ran the whole 1024 and a two-word reply became a line of text a
+      // foot long. The chat ground stays full-bleed — this constrains what is
+      // drawn on it, not the Scaffold.
+      body: ContentWidth(
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                if (assignedToMe)
+                  Container(
+                    width: double.infinity,
+                    color: dark ? Brand.darkSurface : Brand.surface,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Text(
+                      'Assigned to you',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                    ),
                   ),
-                ),
-              Expanded(
-                child: _loading
-                    ? const SkeletonThread()
-                    : _error != null
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(28),
-                          child: Text(
-                            _error!,
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.bodyMedium,
+                Expanded(
+                  child: _loading
+                      ? const SkeletonThread()
+                      : _error != null
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(28),
+                            child: Text(
+                              _error!,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: _load,
+                          child: ListView.builder(
+                            controller: _scroll,
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            // Room for the floating composer, measured against its
+                            // real height rather than guessed: field + padding +
+                            // the home indicator underneath it.
+                            padding: const EdgeInsets.fromLTRB(12, 14, 12, 124),
+                            itemCount: _messages.length,
+                            itemBuilder: (context, i) => _Bubble(message: _messages[i]),
                           ),
                         ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: _load,
-                        child: ListView.builder(
-                          controller: _scroll,
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          // Room for the floating composer, measured against its
-                          // real height rather than guessed: field + padding +
-                          // the home indicator underneath it.
-                          padding: const EdgeInsets.fromLTRB(12, 14, 12, 124),
-                          itemCount: _messages.length,
-                          itemBuilder: (context, i) => _Bubble(message: _messages[i]),
-                        ),
-                      ),
-              ),
-            ],
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: _Composer(
-              controller: _composer,
-              enabled: canSend && !_sending,
-              sending: _sending,
-              onSend: _send,
-              disabledHint: canSend ? null : 'You do not have permission to send messages',
+                ),
+              ],
             ),
-          ),
-        ],
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _Composer(
+                controller: _composer,
+                enabled: canSend && !_sending,
+                sending: _sending,
+                onSend: _send,
+                disabledHint: canSend ? null : 'You do not have permission to send messages',
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

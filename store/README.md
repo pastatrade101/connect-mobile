@@ -10,8 +10,10 @@ key on the build machine, and the console needs an interactive sign-in.
 ```
 store/
   README.md            this file — every field, ready to paste
+  sample-images/       drop tour photos here (see its own README)
   screenshots/
-    6.9-inch/          1320 × 2868 PNGs, uploaded as they are
+    6.9-inch/          1320 × 2868 — iPhone, required
+    13-inch/           2064 × 2752 — iPad, required while the app ships for iPad
 ```
 
 ---
@@ -169,22 +171,39 @@ and no proprietary cryptography. Apple will stop asking on every upload.
 
 ## Screenshots
 
-Files go in `screenshots/6.9-inch/`, numbered in upload order.
+Numbered in upload order. Both sets are captured and sized correctly; upload
+them as they are, no resizing.
 
-**Size: 1320 × 2868 portrait**, which is the iPhone 16 Pro Max. That is the
-6.9-inch slot, and it is the one Apple actually requires — a set at that size
-covers the smaller iPhones automatically. Capture on a 16 Pro Max simulator and
-the pixels come out right with no resizing; anything else (the 16 Pro is
-1206 × 2622) is not an accepted size and will be rejected on upload.
+| Set | Size | Device | Why |
+| --- | --- | --- | --- |
+| `6.9-inch/` | 1320 × 2868 | iPhone 16 Pro Max | The required iPhone slot. A set here covers the smaller iPhones automatically. |
+| `13-inch/` | 2064 × 2752 | iPad Pro 13-inch (M4) | **Required**, because the app ships with iPad support — see below. |
 
-The four to shoot, in order:
+Capture on those two simulators and the pixels come out exactly right. Anything
+else is refused on upload: the iPhone 16 Pro, for instance, is 1206 × 2622,
+which is not an accepted size.
 
-1. **Home** — the day at a glance: the Today card, what needs a reply, what to
-   continue
+The shots, in order:
+
+1. **Home** — the day at a glance: the Today card, the listings, what needs a
+   reply, what to continue
 2. **Inbox** — the shared WhatsApp inbox, threads with real previews and unread
    counts
 3. **A conversation** — one thread open, messages both ways
 4. **Trip** — the departure with driver, guide, vehicle and lodges assigned
+5. **Home, dark** *(iPhone only)* — the same screen in dark mode
+6. **A conversation, dark** *(iPhone only)*
+
+### The iPad set is not optional
+
+`TARGETED_DEVICE_FAMILY` is `"1,2"` — Flutter's default, not a decision anyone
+took — so the app is submitted as a universal build and App Store Connect will
+demand iPad screenshots. It also means Apple reviews the iPad experience, which
+is why `lib/core/responsive.dart` exists: on a 13-inch screen the phone layout
+was being stretched to fill it, and that is a Guideline 4.0 rejection.
+
+If iPad support is ever dropped, set the family to `"1"` and this whole set goes
+away with it.
 
 ### Two things that will spoil the shoot
 
