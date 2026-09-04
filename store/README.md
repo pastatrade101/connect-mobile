@@ -1,49 +1,122 @@
-# App Store listing — copy-paste pack
+# App Store listing — what to paste, and where
 
-Everything App Store Connect asks for, written against what the app actually
-does. Fields are in the order the console presents them. Character limits are
-Apple's and are already respected.
+Work top to bottom with App Store Connect open beside this. Every value is final:
+copy it as-is. Nothing here can be automated — the console needs an interactive
+sign-in.
 
-**Nothing here can be filled in automatically** — App Store Connect has no API
-key on the build machine, and the console needs an interactive sign-in.
+**Start at** [appstoreconnect.apple.com](https://appstoreconnect.apple.com) →
+**My Apps** → **Makutano Connect**. Everything below is on one of four pages in
+the left sidebar.
 
-```
-store/
-  README.md            this file — every field, ready to paste
-  sample-images/       drop tour photos here (see its own README)
-  screenshots/
-    6.9-inch/          1320 × 2868 — iPhone, required
-    13-inch/           2064 × 2752 — iPad, required while the app ships for iPad
-```
+| # | Page | What goes there | Time |
+| --- | --- | --- | --- |
+| 1 | General → **App Information** | Name, subtitle, category, age rating | 3 min |
+| 2 | General → **Pricing and Availability** | Free, all countries | 1 min |
+| 3 | General → **App Privacy** | The data questionnaire + privacy policy URL | 10 min |
+| 4 | iOS App → **1.1.2 Prepare for Submission** | Everything else | 15 min |
+
+Do **App Privacy** early even though it looks optional — Apple blocks submission
+until it is answered, and it is the longest form.
+
+**Have ready:** the demo account password, from your password manager. It is the
+only thing not written down here, and it goes in on page 4.
 
 ---
 
-## App Information
+## 1. App Information
 
-| Field | Value |
+*Sidebar → General → App Information*
+
+| Field | Paste this | Where on the page |
+| --- | --- | --- |
+| Name | `Makutano Connect` | Localizable Information |
+| Subtitle | `Run your safari business` | Localizable Information |
+| Primary category | **Business** | General Information |
+| Secondary category | **Travel** | General Information |
+
+**Content Rights** → Edit → *Does not contain, show, or access third-party
+content*.
+
+**Age Rating** → Edit → answer **None** to every question about violence, sexual
+content, profanity, horror, gambling, contests and drugs; **No** to unrestricted
+web access; **No** to user-generated content shown publicly. Chats are private
+between an operator and their own customer, so that last one is genuinely No.
+The result should read **4+**.
+
+---
+
+## 2. Pricing and Availability
+
+*Sidebar → General → Pricing and Availability*
+
+- **Price:** Free
+- **Availability:** all countries and regions
+
+The customers are Tanzanian, but their staff travel and testers may be anywhere.
+
+---
+
+## 3. App Privacy
+
+*Sidebar → General → App Privacy*
+
+**Privacy Policy URL** — this field is on this page, not the version page:
+
+```
+https://connect.makutano.co.tz/legal/privacy
+```
+
+Then **Data Collection** → Edit → **Yes, we collect data**, and tick exactly
+these three:
+
+| Tick this | Then answer |
 | --- | --- |
-| Name (30) | `Makutano Connect` |
-| Subtitle (30) | `Run your safari business` |
-| Primary category | Business |
-| Secondary category | Travel |
-| Content rights | Does not contain, show, or access third-party content |
-| Age rating | **4+** — nothing in the questionnaire applies. Answer *None* to every violence, sexual content, profanity, horror, gambling, contests and drugs question; *No* to unrestricted web access; *No* to user-generated content shown publicly (chats are private, between an operator and their own customer). |
+| **Contact Info** — name, email, phone | Linked to user: **Yes** · Tracking: **No** · Purpose: **App Functionality** |
+| **User Content** — messages, photos in chats | Linked to user: **Yes** · Tracking: **No** · Purpose: **App Functionality** |
+| **Identifiers** — user ID, push token | Linked to user: **Yes** · Tracking: **No** · Purpose: **App Functionality** |
 
-## Pricing and Availability
+**Leave everything else unticked**, including these, which are easy to get wrong:
 
-Free. Available in all territories — the customers are Tanzanian operators, but
-their staff travel and TestFlight testers may be anywhere.
+| Do not tick | Because |
+| --- | --- |
+| **Location** | The app shows *vehicle* positions sent from our server. It has no location package, no `NSLocation*UsageDescription`, and never reads the device's location. |
+| Diagnostics / Analytics | Firebase is present for push messaging only. No analytics SDK is linked. |
+| Contacts, Purchases, Financial Info, Browsing History | Not collected. |
 
-## Version Information (1.1.2)
+**Tracking (ATT):** No. Nothing is linked to third-party data for advertising,
+and there is no `NSUserTrackingUsageDescription` in the app.
 
-**Promotional text** (170, editable without a new build)
+---
+
+## 4. Version page — "1.1.2 Prepare for Submission"
+
+*Sidebar → iOS App → 1.1.2 Prepare for Submission*
+
+Everything below is on this single page, in the order you meet it scrolling down.
+
+### Screenshots
+
+Top of the page, under **App Previews and Screenshots**. There is a device
+selector — upload each set to its own tab:
+
+| Tab | Folder | Files |
+| --- | --- | --- |
+| **iPhone 6.9"** | `screenshots/6.9-inch/` | 6 |
+| **iPad 13"** | `screenshots/13-inch/` | 4 |
+
+Upload them as they are. They are already the exact pixel sizes Apple requires,
+and they are numbered in the order they should appear.
+
+### Promotional Text
+
+Editable later without a new build.
 
 ```
 Answer WhatsApp enquiries, send quotes and follow every vehicle on one map —
 from the seat of the car, not the office.
 ```
 
-**Description** (4000)
+### Description
 
 ```
 Makutano Connect is the operator's app for a Tanzanian tour business. It puts
@@ -83,69 +156,40 @@ separate product.
 Sign in with the account your workspace owner created for you.
 ```
 
-**Keywords** (100, comma-separated, no spaces after commas)
+### Keywords
+
+Comma-separated, no spaces after the commas.
 
 ```
 safari,tour operator,tanzania,fleet,tracking,whatsapp,quotation,booking,trip,travel,itinerary,arusha
 ```
 
-**Support URL** — `https://connect.makutano.co.tz/legal/terms`
-**Marketing URL** — `https://connect.makutano.co.tz`
-**Copyright** — `2026 Makutano`
-**Version** — set the record to **1.1.2** (it currently reads 1.0 and must match the build)
-
-## App Privacy
-
-Answers are derived from the code, not assumed.
-
-**Does this app collect data?** Yes.
-
-| Data type | Collected | Linked to user | Tracking | Purpose |
-| --- | --- | --- | --- | --- |
-| Contact info — name, email, phone | Yes | Yes | No | App functionality |
-| User content — messages, photos in chats | Yes | Yes | No | App functionality |
-| Identifiers — user ID, push token | Yes | Yes | No | App functionality |
-| Contacts | No | | | |
-| **Location** | **No** | | | The app displays VEHICLE positions from the server. It has no location package, no `NSLocation*UsageDescription`, and never reads this device's location. |
-| Purchases, financial info | No | | | |
-| Browsing history, search history | No | | | |
-| Diagnostics, usage data, analytics | No | | | Firebase is present for push messaging only; no analytics SDK is linked. |
-
-**Tracking (ATT):** No. The app does not track users across apps or websites and
-links no data to third-party data for advertising. No `NSUserTrackingUsageDescription`
-is needed and none is present.
-
-**Privacy Policy URL** — `https://connect.makutano.co.tz/legal/privacy` (live, 200)
-
-## App Review Information
-
-**Sign-in required:** Yes. Apple rejects a login-gated app without working
-credentials.
-
-The demo workspace exists and is seeded:
+### General Information
 
 | Field | Value |
 | --- | --- |
-| Demo email | `demo@makutano.co.tz` |
-| Demo password | *not written down here — paste it straight into App Store Connect* |
-| Workspace | Serengeti Trails Safaris (`serengeti-trails-safaris`) |
+| Support URL | `https://connect.makutano.co.tz/legal/terms` |
+| Marketing URL | `https://connect.makutano.co.tz` |
+| Copyright | `2026 Makutano` |
+| Version | **1.1.2** — change it; the record still says 1.0 and it must match the build |
 
-It holds 5 customers and enquiries, 5 WhatsApp threads with 22 messages, 2
-quotations (one accepted), 1 confirmed booking with a deposit paid, 1 trip with
-driver, guide and vehicle assigned, plus 4 crew and 3 vehicles. Every name,
-number and email is invented; the emails are all `@example.com`.
+### Build
 
-Two things about it that are easy to undo by accident:
+Click **+** next to Build and pick **1.1.2 (7)**.
 
-- **Its trial runs to 2027-12-31.** Apple re-reviews against these same
-  credentials on every resubmission and for support enquiries months later. If
-  the trial lapses the reviewer's login becomes a paywall and the build is
-  rejected for a broken demo account. Do not delete or suspend the workspace
-  after a release.
-- **It is in the production database**, alongside real tenants. Anything seeded
-  into it must stay scoped to that tenant id.
+It only appears once Apple finishes processing the upload — usually 10 to 30
+minutes. If the **+** is not there yet, the build is still processing.
 
-**Notes for the reviewer**
+### App Review Information
+
+Bottom of the page. Tick **Sign-in required**, then:
+
+| Field | Value |
+| --- | --- |
+| User name | `demo@makutano.co.tz` |
+| Password | *from your password manager* |
+
+**Notes** — paste this in:
 
 ```
 Makutano Connect is a business app for tour operators. It requires an account on
@@ -165,62 +209,70 @@ WhatsApp Business account via the official WhatsApp Cloud API. The app is not
 affiliated with or endorsed by WhatsApp or Meta.
 ```
 
-**Export compliance** — handled in code. `ITSAppUsesNonExemptEncryption` is set
-to `false` in `Info.plist`, which is correct: the app uses only standard HTTPS
-and no proprietary cryptography. Apple will stop asking on every upload.
+Then **Save**, and **Add for Review** when you are ready.
 
-## Screenshots
+---
 
-Numbered in upload order. Both sets are captured and sized correctly; upload
-them as they are, no resizing.
+## Things you do NOT have to do
 
-| Set | Size | Device | Why |
-| --- | --- | --- | --- |
-| `6.9-inch/` | 1320 × 2868 | iPhone 16 Pro Max | The required iPhone slot. A set here covers the smaller iPhones automatically. |
-| `13-inch/` | 2064 × 2752 | iPad Pro 13-inch (M4) | **Required**, because the app ships with iPad support — see below. |
+- **Export compliance.** `ITSAppUsesNonExemptEncryption` is `false` in
+  `Info.plist`, so App Store Connect never asks. If you go looking for the
+  prompt, you will not find one — that is correct.
+- **Resize any screenshot.** Both sets are already exact.
+- **Sign in as the demo account to check it.** It is seeded and verified.
 
-Capture on those two simulators and the pixels come out exactly right. Anything
-else is refused on upload: the iPhone 16 Pro, for instance, is 1206 × 2622,
-which is not an accepted size.
+---
 
-The shots, in order:
+## The demo workspace
 
-1. **Home** — the day at a glance: the Today card, the listings, what needs a
-   reply, what to continue
-2. **Inbox** — the shared WhatsApp inbox, threads with real previews and unread
-   counts
-3. **A conversation** — one thread open, messages both ways
-4. **Trip** — the departure with driver, guide, vehicle and lodges assigned
-5. **Home, dark** *(iPhone only)* — the same screen in dark mode
-6. **A conversation, dark** *(iPhone only)*
+Sign-in: `demo@makutano.co.tz` · workspace **Serengeti Trails Safaris**.
 
-### The iPad set is not optional
+It holds 5 customers and enquiries, 5 WhatsApp threads with 22 messages, 4 tours
+with photos, 2 quotations (one accepted), 1 confirmed booking with a deposit
+paid, 1 trip with driver, guide and vehicle assigned, plus 4 crew and 3
+vehicles. Every name, number and email is invented.
 
-`TARGETED_DEVICE_FAMILY` is `"1,2"` — Flutter's default, not a decision anyone
-took — so the app is submitted as a universal build and App Store Connect will
-demand iPad screenshots. It also means Apple reviews the iPad experience, which
-is why `lib/core/responsive.dart` exists: on a 13-inch screen the phone layout
-was being stretched to fill it, and that is a Guideline 4.0 rejection.
+**Do not delete or suspend it after a release.** Apple re-reviews against these
+same credentials on every resubmission and for support enquiries months later.
+Its trial is held to **2027-12-31** for that reason — if the trial lapses, the
+reviewer's login becomes a paywall and the build is rejected for a broken demo
+account.
 
-If iPad support is ever dropped, set the family to `"1"` and this whole set goes
-away with it.
+It also lives in the **production** database alongside real tenants, so anything
+seeded into it must stay scoped to its own tenant id.
 
-### Two things that will spoil the shoot
+---
 
-**The Today card is scoped to the calendar day.** All three of its tiles come
-from SQL of the form `where created_at::date = current_date`, so on any day after
-the data was seeded the card reads `0 / 0 / USD 0`. Either shoot on the day the
-demo data was written, or re-date the demo rows to the capture day first.
-Nothing else on the app behaves this way — "Needs you" and "Continue working"
-are state-based and hold indefinitely.
+## Notes for whoever maintains this
 
-**There is no tracking screenshot, deliberately.** `vehicleSnapshot` and
+Everything above is what to do. This is why.
+
+**The iPad set is not optional.** `TARGETED_DEVICE_FAMILY` is `"1,2"` — Flutter's
+default, not a decision anyone took — so the app is submitted as universal, App
+Store Connect demands iPad screenshots, and Apple reviews the iPad experience.
+That is why `lib/core/responsive.dart` exists: on a 13-inch screen the phone
+layout was being stretched to fill it, which is a Guideline 4.0 rejection. Drop
+iPad support by setting the family to `"1"` and this whole set goes away.
+
+**Re-shooting screenshots.** Capture on an **iPhone 16 Pro Max** simulator
+(1320 × 2868) and an **iPad Pro 13-inch (M4)** simulator (2064 × 2752) and the
+pixels come out right with no resizing. Other devices are refused on upload — the
+iPhone 16 Pro, for instance, is 1206 × 2622, which is not an accepted size.
+`xcrun simctl io <udid> screenshot <file>` writes the native resolution.
+
+**The Today card is scoped to the calendar day.** All three of its tiles come from
+SQL of the form `where created_at::date = current_date`, so on any day after the
+demo data was seeded it reads `0 / 0 / USD 0`. Re-shooting means re-dating the
+demo rows to the capture day first. Nothing else behaves this way — "Needs you"
+and "Continue working" are state-based and hold indefinitely.
+
+**There is no tracking screenshot, on purpose.** `vehicleSnapshot` and
 `vehicleHistory` both call the tracking provider live; no positions are stored in
 Connect's own tables. Putting a vehicle on the demo map would mean registering a
 fake device in the live Traccar server next to real customer trackers. The demo
-vehicles therefore show "tracking not set up", which is true. The Description
-still describes live tracking because the feature is real — it is just not one of
-the four screens.
+vehicles show "tracking not set up", which is true. The Description still
+describes live tracking because the feature is real — it is simply not one of the
+shots.
 
-Everything shown must come from the demo workspace: reviewers read the messages,
-and these images are public once the listing is live.
+**Screenshots are public once the listing is live**, and reviewers read the
+messages in them. Everything shown must come from the demo workspace.

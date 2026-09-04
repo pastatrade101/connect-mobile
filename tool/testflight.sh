@@ -101,4 +101,7 @@ xcodebuild -exportArchive -archivePath "$BUILD_DIR/Runner.xcarchive" \
 
 echo
 echo "Uploaded. Apple processes the build for a few minutes before it appears in"
-echo "TestFlight, and it needs export-compliance answered before testers get it."
+echo "TestFlight and in the Build picker on the version page."
+echo
+echo "Export compliance is NOT asked for: ITSAppUsesNonExemptEncryption is false"
+echo "in Info.plist, which answers it. Do not go looking for the prompt."
