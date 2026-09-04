@@ -29,6 +29,23 @@ echo "== Shipping $VERSION  (bundle tz.co.makutano.makutanoConnect, team $TEAM)"
 echo "   A build number cannot be reused. Ctrl-C now if ${VERSION##*+} has been uploaded before."
 sleep 3
 
+# xcodebuild does not read pubspec.yaml. The version reaches Xcode through
+# ios/Flutter/Generated.xcconfig, which only the flutter tool writes — so
+# archiving straight after a pubspec bump ships the PREVIOUS build number and
+# App Store Connect rejects it with "must be higher than the previously
+# uploaded version". Regenerate the config first, then assert it matches.
+echo "== Syncing the version into Generated.xcconfig"
+flutter build ios --config-only --release >/dev/null 2>&1
+WANT_NAME=${VERSION%%+*}
+WANT_NUMBER=${VERSION##*+}
+GOT_NAME=$(awk -F= '/^FLUTTER_BUILD_NAME=/{print $2}' ios/Flutter/Generated.xcconfig)
+GOT_NUMBER=$(awk -F= '/^FLUTTER_BUILD_NUMBER=/{print $2}' ios/Flutter/Generated.xcconfig)
+echo "   pubspec $WANT_NAME+$WANT_NUMBER   xcconfig $GOT_NAME+$GOT_NUMBER"
+if [ "$WANT_NAME" != "$GOT_NAME" ] || [ "$WANT_NUMBER" != "$GOT_NUMBER" ]; then
+  echo "REFUSING: Generated.xcconfig does not match pubspec.yaml. Run 'flutter pub get' and retry." >&2
+  exit 1
+fi
+
 echo "== Archiving"
 xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release \
   -archivePath "$BUILD_DIR/Runner.xcarchive" -destination "generic/platform=iOS" \
