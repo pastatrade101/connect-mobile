@@ -40,13 +40,23 @@ Future<void> main() async {
   } catch (error) {
     debugPrint('[startup] could not restore the theme: $error');
   }
-  try {
-    await Notifications.instance.init();
-  } catch (error) {
-    debugPrint('[startup] notifications unavailable: $error');
-  }
-
   runApp(const MakutanoApp());
+
+  // Deliberately NOT awaited before runApp().
+  //
+  // On iOS, initialize() carries requestAlertPermission, which puts up the
+  // system permission dialog and does not return until it is answered. Awaiting
+  // it here held the app on its launch screen — on a first run until the driver
+  // tapped a button, and on every run for a platform-channel round trip. None of
+  // it is needed to draw a frame, so it happens once the UI is on screen.
+  // armAlerts() calls init() itself, and init() is idempotent via _ready.
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    try {
+      await Notifications.instance.init();
+    } catch (error) {
+      debugPrint('[startup] notifications unavailable: $error');
+    }
+  });
 }
 
 /// Real push if this build has a Firebase project and the device can register;
