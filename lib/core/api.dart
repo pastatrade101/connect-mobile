@@ -403,6 +403,17 @@ class Api {
 
   Future<Map<String, dynamic>> trip(String id) => _get('/trips/$id');
 
+  /// The tenant's fleet, with live tracking state.
+  ///
+  /// One call for the whole list — the server asks the tracking provider once,
+  /// scoped to this tenant's own devices. No vehicle filter is sent and no
+  /// tracker identifier comes back.
+  Future<Map<String, dynamic>> vehicles() => _get('/vehicles');
+
+  /// Where ONE vehicle is. Same shape as tripTracking, keyed on the vehicle.
+  Future<Map<String, dynamic>> vehicleTracking(String id, {bool history = false}) =>
+      _get('/vehicles/$id/tracking', {if (history) 'history': '1'});
+
   /// Where this trip's vehicle is.
   ///
   /// A device identifier is never sent — the server is asked about a TRIP and

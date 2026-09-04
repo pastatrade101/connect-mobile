@@ -749,6 +749,9 @@ class _TripScreenState extends State<TripScreen> {
                     builder: (_) => TrackingMapScreen(
                       tripId: widget.tripId,
                       vehicleLabel: _trip['vehicle'] as String?,
+                      tripTitle: _trip['title'] as String?,
+                      tripStatus: _trip['status'] as String?,
+                      guests: _travelers.length,
                     ),
                   ),
                 ),
