@@ -11,8 +11,8 @@ the left sidebar.
 | # | Page | What goes there | Time |
 | --- | --- | --- | --- |
 | 1 | General → **App Information** | Name, subtitle, category, age rating | 3 min |
-| 2 | General → **Pricing and Availability** | Free, all countries | 1 min |
-| 3 | General → **App Privacy** | The data questionnaire + privacy policy URL | 10 min |
+| 2 | Monetization → **Pricing and Availability** | Free, all countries | 1 min |
+| 3 | **App Privacy** (top-level) | The data questionnaire + privacy policy URL | 10 min |
 | 4 | iOS App → **1.1.2 Prepare for Submission** | Everything else | 15 min |
 
 Do **App Privacy** early even though it looks optional — Apple blocks submission
@@ -47,9 +47,9 @@ The result should read **4+**.
 
 ## 2. Pricing and Availability
 
-*Sidebar → General → Pricing and Availability*
+*Sidebar → **Monetization** → Pricing and Availability*
 
-- **Price:** Free
+- **Price:** Price Schedule → Add Pricing → **Free (0.00)**
 - **Availability:** all countries and regions
 
 The customers are Tanzanian, but their staff travel and testers may be anywhere.
@@ -58,7 +58,7 @@ The customers are Tanzanian, but their staff travel and testers may be anywhere.
 
 ## 3. App Privacy
 
-*Sidebar → General → App Privacy*
+*Sidebar → **App Privacy** — its own item, not under General*
 
 **Privacy Policy URL** — this field is on this page, not the version page:
 
@@ -85,6 +85,10 @@ these three:
 
 **Tracking (ATT):** No. Nothing is linked to third-party data for advertising,
 and there is no `NSUserTrackingUsageDescription` in the app.
+
+**Then click Publish** at the top right of the App Privacy page and confirm.
+Saving is not enough — answers that are saved but not published do not count, and
+submission stays blocked with nothing obviously wrong.
 
 ---
 
