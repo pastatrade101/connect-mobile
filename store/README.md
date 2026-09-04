@@ -106,7 +106,14 @@ selector — upload each set to its own tab:
 | Tab | Folder | Files |
 | --- | --- | --- |
 | **iPhone 6.9"** | `screenshots/6.9-inch/` | 6 |
+| **iPhone 6.5"** | `screenshots/6.5-inch/` | 4 |
 | **iPad 13"** | `screenshots/13-inch/` | 4 |
+
+**All three tabs are required.** Apple's documentation says 6.5-inch is only
+needed *"if screenshots for 6.9-inch display aren't provided"* — but the console
+disagrees and refuses to start review with *"You must upload a screenshot for
+6.5-inch iPhone displays."* The console is what gates the review, so fill all
+three.
 
 Upload them as they are. They are already the exact pixel sizes Apple requires,
 and they are numbered in the order they should appear.
@@ -259,7 +266,8 @@ layout was being stretched to fill it, which is a Guideline 4.0 rejection. Drop
 iPad support by setting the family to `"1"` and this whole set goes away.
 
 **Re-shooting screenshots.** Capture on an **iPhone 16 Pro Max** simulator
-(1320 × 2868) and an **iPad Pro 13-inch (M4)** simulator (2064 × 2752) and the
+(1320 × 2868), an **iPhone 11 Pro Max** simulator (1242 × 2688) and an
+**iPad Pro 13-inch (M4)** simulator (2064 × 2752) and the
 pixels come out right with no resizing. Other devices are refused on upload — the
 iPhone 16 Pro, for instance, is 1206 × 2622, which is not an accepted size.
 `xcrun simctl io <udid> screenshot <file>` writes the native resolution.
