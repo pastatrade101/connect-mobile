@@ -16,6 +16,28 @@
 # the identity Xcode already used for Runner.app, re-seal the bundle (its
 # seal covers the framework hashes), then install.
 #
+# SCOPE: development installs onto a physical device, and nothing else.
+#
+# This is NOT needed for distribution and must NOT become part of the release
+# architecture. Verified 4 Sep 2026 on a real Release Archive: Xcode signs
+# every embedded framework, objective_c.framework included, with the app's
+# team identifier, and the archive passes `codesign --verify --deep --strict`
+# with no ad-hoc signature anywhere. Archive, TestFlight and App Store builds
+# need no re-signing step. Re-check that after a Flutter or Xcode upgrade
+# rather than assuming it.
+#
+# Root cause of the development-path problem, in flutter_tools'
+# bin/xcode_backend.dart (embedFlutterFrameworks):
+#
+#     final bool codesign =
+#         platform == TargetPlatform.macos &&   // <- macOS only
+#         expandedCodeSignIdentity != null && ...
+#
+# That flag is passed to _embedNativeAssets(), so on iOS native-asset
+# frameworks are embedded without ever being re-signed and keep the ad-hoc
+# signature their build hook gave them. objective_c arrives transitively via
+# path_provider_foundation, so nothing in this repo asked for it.
+#
 # Usage: tool/ios-device-install.sh [device-udid]
 set -euo pipefail
 cd "$(dirname "$0")/.."
