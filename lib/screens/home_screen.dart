@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/api.dart';
 import '../core/motion.dart';
+import '../core/responsive.dart';
 import '../core/theme.dart';
 import '../core/workspace.dart';
 import '../widgets/primitives.dart';
@@ -88,8 +89,12 @@ class HomeScreenState extends State<HomeScreen> {
       final data = await Api.instance.tours();
       if (!mounted) return;
       setState(() {
-        _listings = ((data['items'] as List?) ?? const []).cast<Map<String, dynamic>>().map(Listing.new).toList();
-        _listingSummary = (data['summary'] as Map<String, dynamic>?) ?? const {};
+        _listings = ((data['items'] as List?) ?? const [])
+            .cast<Map<String, dynamic>>()
+            .map(Listing.new)
+            .toList();
+        _listingSummary =
+            (data['summary'] as Map<String, dynamic>?) ?? const {};
       });
     } catch (_) {
       // Deliberately silent: see the field comment.
@@ -98,8 +103,13 @@ class HomeScreenState extends State<HomeScreen> {
 
   String get _greeting {
     final hour = DateTime.now().hour;
-    final part = hour < 12 ? 'Good morning' : (hour < 17 ? 'Good afternoon' : 'Good evening');
-    final name = (Api.instance.session?.userName ?? '').trim().split(RegExp(r'\s+')).first;
+    final part = hour < 12
+        ? 'Good morning'
+        : (hour < 17 ? 'Good afternoon' : 'Good evening');
+    final name = (Api.instance.session?.userName ?? '')
+        .trim()
+        .split(RegExp(r'\s+'))
+        .first;
     return name.isEmpty ? part : '$part, $name';
   }
 
@@ -144,17 +154,22 @@ class HomeScreenState extends State<HomeScreen> {
   /// Older servers only send the chat-shaped list; read it in the same shape so a
   /// phone that is ahead of the deployment still shows something sensible.
   List<Map<String, dynamic>> _continuing(Map<String, dynamic> data) {
-    final fresh = (data['continueWorking'] as List?)?.cast<Map<String, dynamic>>();
+    final fresh = (data['continueWorking'] as List?)
+        ?.cast<Map<String, dynamic>>();
     if (fresh != null) return fresh;
     return (data['myWork'] as List? ?? const [])
         .cast<Map<String, dynamic>>()
         .map(
           (item) => {
             'customer': item['title'],
-            'state': (item['kind'] ?? '') == 'conversation' ? 'WhatsApp conversation' : 'Enquiry',
+            'state': (item['kind'] ?? '') == 'conversation'
+                ? 'WhatsApp conversation'
+                : 'Enquiry',
             'detail': item['detail'],
             'kind': item['kind'],
-            'conversationId': (item['kind'] ?? '') == 'conversation' ? item['id'] : null,
+            'conversationId': (item['kind'] ?? '') == 'conversation'
+                ? item['id']
+                : null,
           },
         )
         .toList();
@@ -177,9 +192,12 @@ class HomeScreenState extends State<HomeScreen> {
     }
 
     final data = _data ?? const <String, dynamic>{};
-    final attention = (data['attention'] as List? ?? const []).cast<Map<String, dynamic>>();
-    final notes = (data['context'] as List? ?? const []).cast<Map<String, dynamic>>();
-    final today = (data['today'] as List? ?? const []).cast<Map<String, dynamic>>();
+    final attention = (data['attention'] as List? ?? const [])
+        .cast<Map<String, dynamic>>();
+    final notes = (data['context'] as List? ?? const [])
+        .cast<Map<String, dynamic>>();
+    final today = (data['today'] as List? ?? const [])
+        .cast<Map<String, dynamic>>();
     final continuing = _continuing(data);
     final persona = (data['persona'] ?? 'agent').toString();
     final actions = quickActionsFor(session);
@@ -187,7 +205,43 @@ class HomeScreenState extends State<HomeScreen> {
 
     // A workspace with no history needs teaching, not an empty dashboard.
     final started =
-        attention.isNotEmpty || continuing.isNotEmpty || today.any((t) => (t['value'] ?? '0').toString() != '0');
+        attention.isNotEmpty ||
+        continuing.isNotEmpty ||
+        today.any((t) => (t['value'] ?? '0').toString() != '0');
+
+    // The two work blocks, built once and then laid out either stacked or side
+    // by side. Building them here rather than inline keeps the two arrangements
+    // from drifting apart — there is one definition of each block, not two.
+    final needsYou = <Widget>[
+      if (attention.isNotEmpty) ...[
+        const GroupLabel(text: 'Needs you').entrance(index: 1),
+        GroupedList(
+          children: [
+            for (final item in attention)
+              AttentionRow(item: item, onTap: () => _openAttention(item)),
+          ],
+        ).entrance(index: 2),
+      ] else
+        CalmIndicator(text: _calmLine(persona)),
+    ];
+    final continueWorking = <Widget>[
+      if (continuing.isNotEmpty) ...[
+        GroupLabel(
+          text: 'Continue working',
+          action: 'All work',
+          onAction: () => widget.onOpenWork(),
+        ),
+        GroupedList(
+          children: [
+            for (final item in continuing.take(4))
+              ContinueRow(item: item, onTap: () => _openContinue(item)),
+          ],
+        ),
+      ],
+    ];
+    // The page is already capped at kContentMaxWidth, so the screen being this
+    // wide means the content is too.
+    final twoColumn = MediaQuery.sizeOf(context).width >= kTwoColumnBreakpoint;
 
     // The header is outside the scroll view, so who you are and what is waiting
     // stay on screen the whole way down — and the bell stays reachable without
@@ -206,7 +260,11 @@ class HomeScreenState extends State<HomeScreen> {
           // them — yours first if any of them are yours.
           alerts: _unread(attention),
           onAlerts: session.can('conversations:read')
-              ? () => widget.onOpenInbox(filter: attention.any((a) => a['key'] == 'my_unread') ? 'mine' : 'all')
+              ? () => widget.onOpenInbox(
+                  filter: attention.any((a) => a['key'] == 'my_unread')
+                      ? 'mine'
+                      : 'all',
+                )
               : null,
         ),
         Expanded(
@@ -219,43 +277,63 @@ class HomeScreenState extends State<HomeScreen> {
               children: [
                 // ── OVERVIEW ───────────────────────────────────────────────────────
                 // How the day is going, at a glance, before anything asks for a decision.
-                if (today.isNotEmpty) TodayCard(tiles: today, currency: session.currency).entrance(),
+                if (today.isNotEmpty)
+                  TodayCard(
+                    tiles: today,
+                    currency: session.currency,
+                  ).entrance(),
                 if (today.isNotEmpty) const SizedBox(height: 14),
 
                 // ── SHOPFRONT ──────────────────────────────────────────────────────
                 // What the marketplace is showing on this operator's behalf. It
                 // sits above the work because it is the reason the work arrives.
                 if (_listings.isNotEmpty) ...[
-                  GroupLabel(text: 'Your listings', action: 'View all', onAction: widget.onOpenListings),
+                  GroupLabel(
+                    text: 'Your listings',
+                    action: 'View all',
+                    onAction: widget.onOpenListings,
+                  ),
                   if (summaryLine(_listingSummary) case final line?)
                     Padding(
                       padding: const EdgeInsets.fromLTRB(18, 0, 18, 10),
-                      child: Text(line, style: Theme.of(context).textTheme.bodySmall),
+                      child: Text(
+                        line,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                     ),
                   ListingStrip(listings: _listings),
                   const SizedBox(height: 18),
                 ],
 
-                // ── ACT ────────────────────────────────────────────────────────────
-                if (attention.isNotEmpty) ...[
-                  const GroupLabel(text: 'Needs you').entrance(index: 1),
-                  GroupedList(
+                // ── ACT + CONTINUE ─────────────────────────────────────────────────
+                //
+                // Stacked on a phone, exactly as before. Side by side once each
+                // column would still be wider than a phone — on an iPad these are
+                // two short lists that otherwise leave the bottom half of a
+                // 13-inch screen empty, and they are read together anyway: what
+                // needs you, and what you were already doing.
+                if (twoColumn && continuing.isNotEmpty)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      for (final item in attention) AttentionRow(item: item, onTap: () => _openAttention(item)),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: needsYou,
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: continueWorking,
+                        ),
+                      ),
                     ],
-                  ).entrance(index: 2),
-                ] else
-                  CalmIndicator(text: _calmLine(persona)),
-
-                // ── CONTINUE ───────────────────────────────────────────────────────
-                if (continuing.isNotEmpty) ...[
-                  const SizedBox(height: 18),
-                  GroupLabel(text: 'Continue working', action: 'All work', onAction: () => widget.onOpenWork()),
-                  GroupedList(
-                    children: [
-                      for (final item in continuing.take(4)) ContinueRow(item: item, onTap: () => _openContinue(item)),
-                    ],
-                  ),
+                  )
+                else ...[
+                  ...needsYou,
+                  if (continuing.isNotEmpty) const SizedBox(height: 18),
+                  ...continueWorking,
                 ],
 
                 // One quiet line for the thing you occasionally have to type in yourself.
@@ -288,11 +366,16 @@ class HomeScreenState extends State<HomeScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('How work reaches you', style: Theme.of(context).textTheme.titleMedium),
+                            Text(
+                              'How work reaches you',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
                             const SizedBox(height: 6),
                             Text(
                               howWorkArrives(workspaceOf(session.workspace)),
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.45),
+                              style: Theme.of(
+                                context,
+                              ).textTheme.bodySmall?.copyWith(height: 1.45),
                             ),
                             if (actions.isNotEmpty) ...[
                               const SizedBox(height: 12),
@@ -302,12 +385,15 @@ class HomeScreenState extends State<HomeScreen> {
                                 children: [
                                   for (final action in actions)
                                     OutlinedButton.icon(
-                                      onPressed: () => widget.onQuickAction(action.key),
+                                      onPressed: () =>
+                                          widget.onQuickAction(action.key),
                                       icon: Icon(action.icon, size: 17),
                                       label: Text(action.label),
                                       style: OutlinedButton.styleFrom(
                                         minimumSize: const Size(0, 44),
-                                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                        ),
                                       ),
                                     ),
                                 ],
@@ -327,7 +413,9 @@ class HomeScreenState extends State<HomeScreen> {
                       padding: const EdgeInsets.fromLTRB(18, 0, 18, 6),
                       child: Text(
                         (note['label'] ?? '').toString(),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.5),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(fontSize: 12.5),
                       ),
                     ),
                 ],
