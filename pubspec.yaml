@@ -1,7 +1,7 @@
 name: makutano_connect
 description: Makutano Connect for phones — the inbox, and the notification that brings you to it.
 publish_to: 'none'
-version: 1.1.2+6
+version: 1.1.2+7
 
 environment:
   sdk: ^3.10.0
