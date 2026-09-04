@@ -61,13 +61,21 @@ class _Basemap {
 }
 
 const _basemaps = <_Basemap>[
-  _Basemap('standard', 'Standard', 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', 19,
-      '© OpenStreetMap contributors'),
-  _Basemap('satellite', 'Satellite',
-      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', 19,
-      'Imagery © Esri'),
-  _Basemap('terrain', 'Terrain', 'https://tile.opentopomap.org/{z}/{x}/{y}.png', 17,
-      '© OpenTopoMap (CC-BY-SA)'),
+  _Basemap(
+    'standard',
+    'Standard',
+    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    19,
+    '© OpenStreetMap contributors',
+  ),
+  _Basemap(
+    'satellite',
+    'Satellite',
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    19,
+    'Imagery © Esri',
+  ),
+  _Basemap('terrain', 'Terrain', 'https://tile.opentopomap.org/{z}/{x}/{y}.png', 17, '© OpenTopoMap (CC-BY-SA)'),
 ];
 
 /// One phrase per state, and they are mutually exclusive.
@@ -219,10 +227,10 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
   }
 
   Color _tone(BuildContext c) => switch (_state) {
-        'LIVE' || 'RECENT' => Tone.success(c),
-        'STALE' || 'UNAVAILABLE' => Tone.warning(c),
-        _ => Tone.muted(c),
-      };
+    'LIVE' || 'RECENT' => Tone.success(c),
+    'STALE' || 'UNAVAILABLE' => Tone.warning(c),
+    _ => Tone.muted(c),
+  };
 
   void _choose(_Basemap b) {
     setState(() => _base = b);
@@ -246,8 +254,7 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
 
   void _toggleSheet() {
     final size = _sheet.isAttached ? _sheet.size : _medium;
-    _sheet.animateTo(size > _collapsed + 0.05 ? _collapsed : _medium,
-        duration: Motion.enter, curve: Motion.curve);
+    _sheet.animateTo(size > _collapsed + 0.05 ? _collapsed : _medium, duration: Motion.enter, curve: Motion.curve);
   }
 
   @override
@@ -304,10 +311,7 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
             Container(
               width: 42,
               height: 42,
-              decoration: BoxDecoration(
-                color: Tone.wash(context, tone),
-                borderRadius: BorderRadius.circular(12),
-              ),
+              decoration: BoxDecoration(color: Tone.wash(context, tone), borderRadius: BorderRadius.circular(12)),
               child: Icon(Icons.directions_car_rounded, size: 22, color: tone),
             ),
             const SizedBox(width: 12),
@@ -318,12 +322,7 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
                 children: [
                   Text(
                     _title,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      height: 1.15,
-                      color: Tone.ink(context),
-                    ),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, height: 1.15, color: Tone.ink(context)),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -393,11 +392,12 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
               child: Row(
                 children: [
-                  Text('Which vehicle?',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Tone.ink(sheetContext))),
+                  Text(
+                    'Which vehicle?',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Tone.ink(sheetContext)),
+                  ),
                   const Spacer(),
-                  Text('${_fleet.length} vehicles',
-                      style: TextStyle(fontSize: 13.5, color: Tone.muted(sheetContext))),
+                  Text('${_fleet.length} vehicles', style: TextStyle(fontSize: 13.5, color: Tone.muted(sheetContext))),
                 ],
               ),
             ),
@@ -438,7 +438,10 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
                                 Text(
                                   (v['name'] as String?) ?? 'Vehicle',
                                   style: TextStyle(
-                                      fontSize: 16, fontWeight: FontWeight.w600, color: Tone.ink(listContext)),
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Tone.ink(listContext),
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -448,7 +451,7 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
                                   // first, which reads as reassurance.
                                   [
                                     (v['stateLabel'] as String?) ?? '',
-                                    if (v['recordedAt'] != null) relativeTime(v['recordedAt'])
+                                    if (v['recordedAt'] != null) relativeTime(v['recordedAt']),
                                   ].where((x) => x.isNotEmpty).join(' · '),
                                   style: TextStyle(fontSize: 13.5, color: tone),
                                   maxLines: 1,
@@ -457,8 +460,7 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
                               ],
                             ),
                           ),
-                          if (selected)
-                            Icon(Icons.check_rounded, size: 20, color: Tone.accent(listContext)),
+                          if (selected) Icon(Icons.check_rounded, size: 20, color: Tone.accent(listContext)),
                         ],
                       ),
                     ),
@@ -505,10 +507,11 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
               notConfigured
                   ? 'Connect a phone or GPS tracker to see this vehicle on the map.'
                   : _state == 'UNAVAILABLE'
-                      // The server's own words when it has them: "temporarily
-                      // unavailable" is true but says nothing an operator can act on.
-                      ? (_error ?? "We couldn't refresh the vehicle location. This says nothing about where the vehicle is.")
-                      : 'This tracker has not reported recently.',
+                  // The server's own words when it has them: "temporarily
+                  // unavailable" is true but says nothing an operator can act on.
+                  ? (_error ??
+                        "We couldn't refresh the vehicle location. This says nothing about where the vehicle is.")
+                  : 'This tracker has not reported recently.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 15, height: 1.4, color: Tone.muted(context)),
             ),
@@ -625,11 +628,24 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
   // -------------------------------------------------------------- controls --
 
   Widget _controls(BuildContext context) {
+    /*
+     * spaceBetween, NOT Flexible + Spacer.
+     *
+     * Flexible defaults to flex 1 and so does Spacer, so the two of them split
+     * the free width evenly: the picker was allotted about 175pt when its three
+     * segments need about 218, and Flutter drew a "RIGHT OVERFLOWED BY 58
+     * PIXELS" stripe across the map. In release the stripe is hidden and the
+     * label is simply clipped, so it was a real defect, not a debug artefact.
+     *
+     * Now the picker takes its natural width and spaceBetween pushes the zoom
+     * column to the far edge. Flexible stays, with the whole remaining width to
+     * draw on, so a narrower phone shrinks the picker instead of overflowing.
+     */
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Flexible(child: _basemapPicker(context)),
-        const Spacer(),
         Column(
           children: [
             _roundButton(context, Icons.add_rounded, () => _zoom(1), 'Zoom in'),
@@ -688,24 +704,24 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
   }
 
   Widget _roundButton(BuildContext context, IconData icon, VoidCallback onTap, String tip) => Semantics(
-        button: true,
-        label: tip,
-        child: GestureDetector(
-          onTap: onTap,
-          behavior: HitTestBehavior.opaque,
-          child: Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: Tone.surface(context).withValues(alpha: 0.96),
-              borderRadius: BorderRadius.circular(13),
-              border: Border.all(color: Tone.line(context)),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 10)],
-            ),
-            child: Icon(icon, size: 22, color: Tone.ink(context)),
-          ),
+    button: true,
+    label: tip,
+    child: GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: 46,
+        height: 46,
+        decoration: BoxDecoration(
+          color: Tone.surface(context).withValues(alpha: 0.96),
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(color: Tone.line(context)),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 10)],
         ),
-      );
+        child: Icon(icon, size: 22, color: Tone.ink(context)),
+      ),
+    ),
+  );
 
   // ------------------------------------------------------------ marker card --
 
@@ -789,37 +805,70 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
             color: Tone.surface(context),
             borderRadius: BorderRadius.circular(22),
             border: Border.all(color: Tone.line(context)),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 26, offset: const Offset(0, -4))],
+            boxShadow: [
+              BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 26, offset: const Offset(0, -4)),
+            ],
           ),
           clipBehavior: Clip.antiAlias,
-          child: ListView(
-            controller: scrollController,
-            padding: const EdgeInsets.fromLTRB(18, 10, 18, 20),
+          /*
+           * The list scrolls; it just did not look like it.
+           *
+           * At the medium stop the content is clipped mid-element by a hard
+           * edge, which reads as a cropped panel rather than a scrollable one —
+           * reported as "looks cropped, need scroll" when scrolling already
+           * worked. A short fade to the sheet's own surface colour is the whole
+           * fix: a fading edge says there is more below, a hard edge says the
+           * panel ends here. IgnorePointer so it never eats a drag.
+           */
+          child: Stack(
             children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Tone.muted(context).withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2),
+              ListView(
+                controller: scrollController,
+                padding: const EdgeInsets.fromLTRB(18, 10, 18, 20),
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Tone.muted(context).withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  _statusBlock(context, tone),
+                  if (_position != null) ...[
+                    const SizedBox(height: 18),
+                    _metrics(context),
+                    const SizedBox(height: 18),
+                    _actions(context),
+                  ],
+                  if (widget.tripTitle != null && _vehicleId == null) ...[
+                    const SizedBox(height: 20),
+                    _tripBlock(context),
+                  ],
+                  const SizedBox(height: 16),
+                  _trackingDetails(context),
+                ],
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: 26,
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Tone.surface(context).withValues(alpha: 0), Tone.surface(context)],
+                      ),
+                    ),
                   ),
                 ),
               ),
-              _statusBlock(context, tone),
-              if (_position != null) ...[
-                const SizedBox(height: 18),
-                _metrics(context),
-                const SizedBox(height: 18),
-                _actions(context),
-              ],
-              if (widget.tripTitle != null && _vehicleId == null) ...[
-                const SizedBox(height: 20),
-                _tripBlock(context),
-              ],
-              const SizedBox(height: 16),
-              _trackingDetails(context),
             ],
           ),
         );
@@ -857,8 +906,7 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
           // THE SECOND CLOCK. The age of the fix is above; this is the age of our
           // knowledge. Conflating them is how a screen claims to be live while
           // nothing has been fetched for ten minutes.
-          Text('Checked ${relativeTime(_checkedAt)}',
-              style: TextStyle(fontSize: 13.5, color: Tone.muted(context))),
+          Text('Checked ${relativeTime(_checkedAt)}', style: TextStyle(fontSize: 13.5, color: Tone.muted(context))),
         ],
       ],
     );
@@ -866,23 +914,22 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
 
   Widget _metrics(BuildContext context) {
     Widget tile(String value, String label) => Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
-            decoration: BoxDecoration(
-              color: Tone.panel(context),
-              borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
+        decoration: BoxDecoration(color: Tone.panel(context), borderRadius: BorderRadius.circular(14)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              value,
+              style: TextStyle(fontSize: 21, fontWeight: FontWeight.w700, color: Tone.ink(context)),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(value,
-                    style: TextStyle(fontSize: 21, fontWeight: FontWeight.w700, color: Tone.ink(context))),
-                const SizedBox(height: 3),
-                Text(label, style: TextStyle(fontSize: 13.5, color: Tone.muted(context))),
-              ],
-            ),
-          ),
-        );
+            const SizedBox(height: 3),
+            Text(label, style: TextStyle(fontSize: 13.5, color: Tone.muted(context))),
+          ],
+        ),
+      ),
+    );
 
     return Row(
       children: [
@@ -933,27 +980,28 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('CURRENT TRIP',
-            style: TextStyle(fontSize: 12, letterSpacing: 0.8, fontWeight: FontWeight.w700, color: Tone.muted(context))),
+        Text(
+          'CURRENT TRIP',
+          style: TextStyle(fontSize: 12, letterSpacing: 0.8, fontWeight: FontWeight.w700, color: Tone.muted(context)),
+        ),
         const SizedBox(height: 8),
         PressableRow(
           onTap: () => Navigator.of(context).pop(),
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
-            decoration: BoxDecoration(
-              color: Tone.panel(context),
-              borderRadius: BorderRadius.circular(14),
-            ),
+            decoration: BoxDecoration(color: Tone.panel(context), borderRadius: BorderRadius.circular(14)),
             child: Row(
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(widget.tripTitle!,
-                          style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600, color: Tone.ink(context)),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis),
+                      Text(
+                        widget.tripTitle!,
+                        style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600, color: Tone.ink(context)),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       if (parts.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(parts.join(' · '), style: TextStyle(fontSize: 13.5, color: Tone.muted(context))),
@@ -971,12 +1019,12 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
   }
 
   String _tripStatusLabel(String s) => switch (s) {
-        'PREPARING' => 'Preparing',
-        'READY' => 'Ready to leave',
-        'IN_PROGRESS' => 'Out now',
-        'COMPLETED' => 'Completed',
-        _ => s,
-      };
+    'PREPARING' => 'Preparing',
+    'READY' => 'Ready to leave',
+    'IN_PROGRESS' => 'Out now',
+    'COMPLETED' => 'Completed',
+    _ => s,
+  };
 
   /// Coordinates and point counts live HERE, behind a tap.
   ///
@@ -991,17 +1039,21 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
       child: ExpansionTile(
         tilePadding: EdgeInsets.zero,
         childrenPadding: const EdgeInsets.only(bottom: 8),
-        title: Text('Tracking details',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Tone.ink(context))),
+        title: Text(
+          'Tracking details',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Tone.ink(context)),
+        ),
         iconColor: Tone.muted(context),
         collapsedIconColor: Tone.muted(context),
         children: [
           if (here != null)
-            _detail(context, 'Coordinates',
-                '${here.latitude.toStringAsFixed(5)}, ${here.longitude.toStringAsFixed(5)}'),
+            _detail(
+              context,
+              'Coordinates',
+              '${here.latitude.toStringAsFixed(5)}, ${here.longitude.toStringAsFixed(5)}',
+            ),
           if (_fixAt != null) _detail(context, 'GPS fix time', _fixAt!.toLocal().toString().substring(0, 16)),
-          if (_checkedAt != null)
-            _detail(context, 'Last checked', _checkedAt!.toLocal().toString().substring(0, 16)),
+          if (_checkedAt != null) _detail(context, 'Last checked', _checkedAt!.toLocal().toString().substring(0, 16)),
           if (track.length > 1) _detail(context, 'Route points', '${track.length} in the last 24 hours'),
           _detail(context, 'Map data', _base.attribution),
         ],
@@ -1010,18 +1062,18 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
   }
 
   Widget _detail(BuildContext context, String label, String value) => Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 118,
-              child: Text(label, style: TextStyle(fontSize: 13.5, color: Tone.muted(context))),
-            ),
-            Expanded(
-              child: Text(value, style: TextStyle(fontSize: 13.5, color: Tone.ink(context))),
-            ),
-          ],
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 118,
+          child: Text(label, style: TextStyle(fontSize: 13.5, color: Tone.muted(context))),
         ),
-      );
+        Expanded(
+          child: Text(value, style: TextStyle(fontSize: 13.5, color: Tone.ink(context))),
+        ),
+      ],
+    ),
+  );
 }
