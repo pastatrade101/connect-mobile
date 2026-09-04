@@ -623,7 +623,11 @@ class _TripScreenState extends State<TripScreen> {
     final due = _booking['balanceDue'];
     final currency = (_booking['currency'] ?? '').toString();
     // A viewer without bookings:read is told THAT money is owed, not how much.
-    return due == null ? 'Some balance is still owed' : '$currency $due';
+    if (due == null) return 'Some balance is still owed';
+    // Grouped, and whole unless there are real cents — the server sends a bare
+    // numeric string, so printing it straight gave "USD 6328.00" beside Home's
+    // "USD 6,328" for the same debt.
+    return '$currency ${formatMoney(due)}';
   }
 
   int? get _daysToDeparture {

@@ -7,6 +7,13 @@ Apple's and are already respected.
 **Nothing here can be filled in automatically** — App Store Connect has no API
 key on the build machine, and the console needs an interactive sign-in.
 
+```
+store/
+  README.md            this file — every field, ready to paste
+  screenshots/
+    6.9-inch/          1320 × 2868 PNGs, uploaded as they are
+```
+
 ---
 
 ## App Information
@@ -110,12 +117,31 @@ is needed and none is present.
 
 ## App Review Information
 
-**Sign-in required:** Yes. This is the blocker to sort before submitting —
-Apple rejects a login-gated app without working credentials.
+**Sign-in required:** Yes. Apple rejects a login-gated app without working
+credentials.
 
-Create a demo workspace with representative data (a few enquiries, one trip, one
-vehicle reporting positions) and put its email and password in the demo account
-fields. Do not use a real customer workspace: reviewers will read the messages.
+The demo workspace exists and is seeded:
+
+| Field | Value |
+| --- | --- |
+| Demo email | `demo@makutano.co.tz` |
+| Demo password | *not written down here — paste it straight into App Store Connect* |
+| Workspace | Serengeti Trails Safaris (`serengeti-trails-safaris`) |
+
+It holds 5 customers and enquiries, 5 WhatsApp threads with 22 messages, 2
+quotations (one accepted), 1 confirmed booking with a deposit paid, 1 trip with
+driver, guide and vehicle assigned, plus 4 crew and 3 vehicles. Every name,
+number and email is invented; the emails are all `@example.com`.
+
+Two things about it that are easy to undo by accident:
+
+- **Its trial runs to 2027-12-31.** Apple re-reviews against these same
+  credentials on every resubmission and for support enquiries months later. If
+  the trial lapses the reviewer's login becomes a paywall and the build is
+  rejected for a broken demo account. Do not delete or suspend the workspace
+  after a release.
+- **It is in the production database**, alongside real tenants. Anything seeded
+  into it must stay scoped to that tenant id.
 
 **Notes for the reviewer**
 
@@ -141,22 +167,41 @@ affiliated with or endorsed by WhatsApp or Meta.
 to `false` in `Info.plist`, which is correct: the app uses only standard HTTPS
 and no proprietary cryptography. Apple will stop asking on every upload.
 
-## Screenshots — the one thing that still needs a person
+## Screenshots
 
-Required: at least one 6.5-inch set. Accepted sizes are **1242 × 2688** or
-**1284 × 2778** portrait.
+Files go in `screenshots/6.9-inch/`, numbered in upload order.
 
-These cannot be generated unattended, because every screen worth showing is
-behind a sign-in and the password must not pass through tooling. The workable
-split is: boot the simulator and install the app, a human types the password
-once, then the screens are captured and resized to the exact pixel dimensions.
+**Size: 1320 × 2868 portrait**, which is the iPhone 16 Pro Max. That is the
+6.9-inch slot, and it is the one Apple actually requires — a set at that size
+covers the smaller iPhones automatically. Capture on a 16 Pro Max simulator and
+the pixels come out right with no resizing; anything else (the 16 Pro is
+1206 × 2622) is not an accepted size and will be rejected on upload.
 
-Suggested five, in order:
+The four to shoot, in order:
 
-1. **Inbox** — the shared WhatsApp inbox, a few conversations
-2. **Live map** — full-screen tracking with a vehicle selected and its card open
-3. **Trip** — one trip showing readiness
-4. **Quotation** — a quote ready to send
-5. **Home** — the day at a glance
+1. **Home** — the day at a glance: the Today card, what needs a reply, what to
+   continue
+2. **Inbox** — the shared WhatsApp inbox, threads with real previews and unread
+   counts
+3. **A conversation** — one thread open, messages both ways
+4. **Trip** — the departure with driver, guide, vehicle and lodges assigned
 
-Avoid real customer names and numbers; use the demo workspace.
+### Two things that will spoil the shoot
+
+**The Today card is scoped to the calendar day.** All three of its tiles come
+from SQL of the form `where created_at::date = current_date`, so on any day after
+the data was seeded the card reads `0 / 0 / USD 0`. Either shoot on the day the
+demo data was written, or re-date the demo rows to the capture day first.
+Nothing else on the app behaves this way — "Needs you" and "Continue working"
+are state-based and hold indefinitely.
+
+**There is no tracking screenshot, deliberately.** `vehicleSnapshot` and
+`vehicleHistory` both call the tracking provider live; no positions are stored in
+Connect's own tables. Putting a vehicle on the demo map would mean registering a
+fake device in the live Traccar server next to real customer trackers. The demo
+vehicles therefore show "tracking not set up", which is true. The Description
+still describes live tracking because the feature is real — it is just not one of
+the four screens.
+
+Everything shown must come from the demo workspace: reviewers read the messages,
+and these images are public once the listing is live.

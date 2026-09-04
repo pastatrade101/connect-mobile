@@ -681,6 +681,19 @@ class _Disc extends StatelessWidget {
   );
 }
 
+/// An amount, grouped, and whole unless it really has cents.
+///
+/// The server sends money as a bare numeric string ("6328.00"), which printed
+/// straight reads "USD 6328.00" next to a "USD 6,328" for the same debt a screen
+/// away. Distinct from [_Stat._money], which rounds unconditionally because the
+/// Today card is a glance and its cents are noise; a balance someone is about to
+/// chase is not a glance.
+String formatMoney(Object? raw) {
+  final n = double.tryParse(raw?.toString() ?? '') ?? 0;
+  final cents = (n - n.roundToDouble()).abs() > 0.004;
+  return NumberFormat(cents ? '#,##0.00' : '#,##0', 'en').format(n);
+}
+
 class _Stat extends StatelessWidget {
   const _Stat({required this.tile, required this.currency});
   final Map<String, dynamic> tile;
