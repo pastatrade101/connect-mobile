@@ -113,7 +113,7 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
   /// a safari vehicle does not need second-by-second truth.
   static const _interval = Duration(seconds: 25);
 
-  static const _collapsed = 0.16;
+  static const _collapsed = 0.18;
   static const _medium = 0.42;
   static const _expanded = 0.88;
 
@@ -237,6 +237,13 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
     if (here != null) _map.move(here, _map.camera.zoom < 14 ? 14 : _map.camera.zoom);
   }
 
+  /// Get the sheet out of the way, without fighting the operator if it is
+  /// already down.
+  void _collapseSheet() {
+    if (!_sheet.isAttached || _sheet.size <= _collapsed + 0.02) return;
+    _sheet.animateTo(_collapsed, duration: Motion.quick, curve: Motion.curve);
+  }
+
   void _toggleSheet() {
     final size = _sheet.isAttached ? _sheet.size : _medium;
     _sheet.animateTo(size > _collapsed + 0.05 ? _collapsed : _medium,
@@ -257,8 +264,7 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
                 children: [
                   Positioned.fill(child: _mapOrState(context)),
                   Positioned(left: 14, right: 14, top: 12, child: _controls(context)),
-                  if (_markerCardOpen && _here != null)
-                    Positioned(left: 14, right: 14, bottom: 12, child: _markerCard(context)),
+
                   _bottomSheet(context),
                 ],
               ),
@@ -531,8 +537,19 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
         initialCenter: here,
         initialZoom: 14,
         maxZoom: _base.maxZoom,
-        // Tapping the map dismisses the marker card, the way a map should.
+        // Tapping the map dismisses the tooltip, the way a map should.
         onTap: (_, __) => setState(() => _markerCardOpen = false),
+        /*
+         * Touching the map gets the sheet out of the way.
+         *
+         * An operator who starts panning is looking at the map, and a panel
+         * covering the bottom third of it at that moment is the thing they were
+         * about to move. hasGesture distinguishes a real touch from our own
+         * programmatic recentre, which must NOT collapse anything.
+         */
+        onPositionChanged: (_, hasGesture) {
+          if (hasGesture) _collapseSheet();
+        },
       ),
       children: [
         TileLayer(
@@ -571,19 +588,32 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
           markers: [
             Marker(
               point: here,
-              width: 54,
-              height: 54,
-              child: GestureDetector(
-                onTap: () => setState(() => _markerCardOpen = !_markerCardOpen),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: tone,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 3.5),
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 10)],
+              // Tall enough to hold the tooltip ABOVE the vehicle, so the popup
+              // belongs to the thing that was tapped rather than appearing at the
+              // other end of the screen.
+              width: 250,
+              height: _markerCardOpen ? 170 : 56,
+              alignment: Alignment.bottomCenter,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_markerCardOpen) _tooltip(context, tone),
+                  GestureDetector(
+                    onTap: () => setState(() => _markerCardOpen = !_markerCardOpen),
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: tone,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 3.5),
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 10)],
+                      ),
+                      child: const Icon(Icons.directions_car_rounded, size: 23, color: Colors.white),
+                    ),
                   ),
-                  child: const Icon(Icons.directions_car_rounded, size: 24, color: Colors.white),
-                ),
+                ],
               ),
             ),
           ],
@@ -603,11 +633,11 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
         Column(
           children: [
             _roundButton(context, Icons.add_rounded, () => _zoom(1), 'Zoom in'),
-            const SizedBox(height: 8),
+            const SizedBox(height: 7),
             _roundButton(context, Icons.remove_rounded, () => _zoom(-1), 'Zoom out'),
-            const SizedBox(height: 8),
+            const SizedBox(height: 7),
             if (_here != null) _roundButton(context, Icons.my_location_rounded, _recentre, 'Recentre'),
-            const SizedBox(height: 8),
+            const SizedBox(height: 7),
             _roundButton(context, Icons.open_in_full_rounded, _toggleSheet, 'Full map'),
           ],
         ),
@@ -619,11 +649,11 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Tone.surface(context).withValues(alpha: 0.96),
-        borderRadius: BorderRadius.circular(13),
+        borderRadius: BorderRadius.circular(11),
         border: Border.all(color: Tone.line(context)),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 10)],
       ),
-      padding: const EdgeInsets.all(3),
+      padding: const EdgeInsets.all(2.5),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -633,18 +663,19 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
               behavior: HitTestBehavior.opaque,
               child: AnimatedContainer(
                 duration: Motion.quick,
-                // 44px tall: a thumb, not a cursor.
-                constraints: const BoxConstraints(minHeight: 42),
+                // Compact. This is chosen once and then ignored — it should not
+                // occupy the map like a primary action.
+                constraints: const BoxConstraints(minHeight: 32),
                 alignment: Alignment.center,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
+                padding: const EdgeInsets.symmetric(horizontal: 11),
                 decoration: BoxDecoration(
                   color: _base.key == b.key ? Tone.accent(context) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   b.label,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w600,
                     color: _base.key == b.key ? Colors.white : Tone.muted(context),
                   ),
@@ -678,60 +709,58 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
 
   // ------------------------------------------------------------ marker card --
 
-  /// What tapping the vehicle opens. Compact, and it names the vehicle so the
-  /// card is unambiguous once there is more than one on screen.
-  Widget _markerCard(BuildContext context) {
-    final tone = _tone(context);
+  /// What tapping the vehicle opens — anchored to the vehicle itself.
+  ///
+  /// A card at the bottom of the screen makes the operator work out which pin it
+  /// belongs to. Above the marker there is nothing to work out.
+  Widget _tooltip(BuildContext context, Color tone) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.fromLTRB(13, 10, 13, 11),
       decoration: BoxDecoration(
         color: Tone.surface(context),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(13),
         border: Border.all(color: Tone.line(context)),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.16), blurRadius: 18)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.22), blurRadius: 16)],
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _title,
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Tone.ink(context)),
+          Text(
+            _title,
+            style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: Tone.ink(context)),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 5),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(_icons[_state] ?? Icons.gps_not_fixed_rounded, size: 14, color: tone),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  _labels[_state] ?? _state,
+                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: tone),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Icon(_icons[_state] ?? Icons.gps_not_fixed_rounded, size: 15, color: tone),
-                    const SizedBox(width: 5),
-                    Text(_labels[_state] ?? _state,
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: tone)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  // Time first, never place: an operator reads left to right and
-                  // stops at the first reassuring word.
-                  'Last GPS update ${relativeTime(_fixAt)}'
-                  '${_speed != null && _speed! > 3 ? ' · $_speed km/h' : ''}',
-                  style: TextStyle(fontSize: 14, color: Tone.muted(context)),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-          IconButton(
-            onPressed: () => setState(() => _markerCardOpen = false),
-            icon: const Icon(Icons.close_rounded, size: 22),
-            color: Tone.muted(context),
-            tooltip: 'Close',
+          const SizedBox(height: 5),
+          Text(
+            // Time first, never place: an operator reads left to right and stops
+            // at the first reassuring word.
+            'Last GPS update ${relativeTime(_fixAt)}'
+            '${_speed != null && _speed! > 3 ? ' · $_speed km/h' : ''}',
+            style: TextStyle(fontSize: 13, color: Tone.muted(context)),
+            maxLines: 2,
           ),
         ],
       ),
-    ).animate().fadeIn(duration: Motion.quick).slideY(begin: 0.1, end: 0, duration: Motion.quick);
+    ).animate().fadeIn(duration: Motion.quick).scaleXY(begin: 0.94, end: 1, duration: Motion.quick);
   }
 
   // ---------------------------------------------------------- bottom sheet --
@@ -746,16 +775,26 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
       snapSizes: const [_collapsed, _medium, _expanded],
       builder: (context, scrollController) {
         final tone = _tone(context);
+        /*
+         * A FLOATING panel, not a drawer welded to the bottom edge.
+         *
+         * Tied to the edge it reads as a wall the map ends at. Inset, with the
+         * ground visible around it, it reads as something resting ON the map —
+         * which is what it is, and it makes the map feel like the workspace
+         * rather than the top half of the screen.
+         */
         return Container(
+          margin: EdgeInsets.fromLTRB(10, 0, 10, 10 + MediaQuery.of(context).padding.bottom),
           decoration: BoxDecoration(
             color: Tone.surface(context),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            border: Border(top: BorderSide(color: Tone.line(context))),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.14), blurRadius: 24, offset: const Offset(0, -6))],
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: Tone.line(context)),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 26, offset: const Offset(0, -4))],
           ),
+          clipBehavior: Clip.antiAlias,
           child: ListView(
             controller: scrollController,
-            padding: EdgeInsets.fromLTRB(18, 10, 18, 18 + MediaQuery.of(context).padding.bottom),
+            padding: const EdgeInsets.fromLTRB(18, 10, 18, 20),
             children: [
               Center(
                 child: Container(
