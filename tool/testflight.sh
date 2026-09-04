@@ -46,6 +46,16 @@ if [ "$WANT_NAME" != "$GOT_NAME" ] || [ "$WANT_NUMBER" != "$GOT_NUMBER" ]; then
   exit 1
 fi
 
+# build/native_assets is NOT keyed by platform. A `flutter build ios --simulator`
+# leaves a SIMULATOR slice of objective_c.framework there, ad-hoc signed, and a
+# device archive afterwards embeds it unchanged — a simulator binary inside an
+# App Store build. Caught once by the check below, after a full archive had run.
+# Clearing it costs seconds and makes the ordering of your builds irrelevant.
+if [ -d build/native_assets ]; then
+  echo "== Clearing build/native_assets (it is not platform-keyed)"
+  rm -rf build/native_assets
+fi
+
 echo "== Archiving"
 xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release \
   -archivePath "$BUILD_DIR/Runner.xcarchive" -destination "generic/platform=iOS" \
@@ -55,12 +65,19 @@ APP="$BUILD_DIR/Runner.xcarchive/Products/Applications/Runner.app"
 echo "== Checking the archive before it goes anywhere"
 codesign --verify --deep --strict "$APP"
 for fw in "$APP"/Frameworks/*.framework; do
+  name=$(basename "$fw")
   if codesign -dvvv "$fw" 2>&1 | grep -q '^Signature=adhoc'; then
-    echo "REFUSING TO UPLOAD: $(basename "$fw") is ad-hoc signed. Apple will reject this." >&2
+    echo "REFUSING TO UPLOAD: $name is ad-hoc signed. Apple will reject this." >&2
+    exit 1
+  fi
+  # A simulator slice in a device archive is the other half of the same trap.
+  bin="$fw/${name%.framework}"
+  if [ -f "$bin" ] && vtool -show-build "$bin" 2>/dev/null | grep -q IOSSIMULATOR; then
+    echo "REFUSING TO UPLOAD: $name is a SIMULATOR binary, not a device one." >&2
     exit 1
   fi
 done
-echo "   every embedded framework is properly signed"
+echo "   every embedded framework is device-built and properly signed"
 
 cat > "$BUILD_DIR/UploadOptions.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
