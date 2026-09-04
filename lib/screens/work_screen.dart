@@ -11,7 +11,22 @@ import 'quotation_sheet.dart';
 /// Everything in flight, grouped by what it is — and each row carries the step the
 /// server says comes next, so nobody has to work out which module to open.
 class WorkScreen extends StatefulWidget {
-  const WorkScreen({super.key, this.initialKind, required this.onCreate, this.onBack, this.onOpenAccount});
+  const WorkScreen({
+    super.key,
+    this.initialKind,
+    this.pinned = false,
+    required this.onCreate,
+    this.onBack,
+    this.onOpenAccount,
+  });
+
+  /// Show ONLY [initialKind], titled as that kind, with no tab strip.
+  ///
+  /// This is what makes Enquiries a destination of its own rather than a second
+  /// door onto Work. Without it the two tabs land on the same screen under the
+  /// same title — the exact redundancy that got the create button's "Open inbox"
+  /// removed.
+  final bool pinned;
 
   /// The account page, opened from the avatar in this screen's header.
   ///
@@ -42,10 +57,14 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
   void initState() {
     super.initState();
     final session = Api.instance.session;
-    _tabs = [
-      (kind: null, label: 'All'),
-      if (session != null) ...workKindsFor(session).map((k) => (kind: k.kind, label: k.label)),
-    ];
+    final kinds = session == null ? const <({String kind, String label})>[] : workKindsFor(session);
+    _tabs = widget.pinned && widget.initialKind != null
+        // One kind, so `_tabs.length > 1` is false and the strip does not render.
+        ? [(kind: widget.initialKind, label: _labelFor(kinds, widget.initialKind!))]
+        : [
+            (kind: null, label: 'All'),
+            ...kinds.map((k) => (kind: k.kind, label: k.label)),
+          ];
     final start = widget.initialKind == null ? 0 : _indexOf(widget.initialKind);
     _controller = TabController(length: _tabs.length, vsync: this, initialIndex: start);
     load();
@@ -55,6 +74,16 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  /// The workspace's own word for a kind — "Enquiries" for an operator, and
+  /// whatever [workKindsFor] calls it for anyone else. Falls back to the kind
+  /// itself so a pinned tab is never left with an empty title.
+  static String _labelFor(List<({String kind, String label})> kinds, String kind) {
+    for (final k in kinds) {
+      if (k.kind == kind) return k.label;
+    }
+    return kind;
   }
 
   int _indexOf(String? kind) {
@@ -99,8 +128,15 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
           avatarUrl: Api.instance.session?.operatorLogoUrl,
           initials: initialsOf(Api.instance.session?.operatorName ?? Api.instance.session?.tenantName ?? ''),
           onAccountTap: widget.onOpenAccount,
-          title: 'Work',
-          subtitle: _items.isEmpty ? 'Nothing is open right now' : '${_items.length} things in flight',
+          title: widget.pinned ? _tabs.first.label : 'Work',
+          // Pinned, the count has to be the count of what is actually on screen.
+          // "6 things in flight" over a list of 4 enquiries is just wrong.
+          subtitle: switch (widget.pinned
+              ? _items.where((i) => i['kind'] == widget.initialKind).length
+              : _items.length) {
+            0 => 'Nothing is open right now',
+            final n => widget.pinned ? '$n open' : '$n things in flight',
+          },
           onBack: widget.onBack,
         ),
         if (_tabs.length > 1)
@@ -193,7 +229,7 @@ class WorkScreenState extends State<WorkScreen> with SingleTickerProviderStateMi
       onRefresh: load,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        // Clear the floating nav, raised + included.
+        // Clear the floating nav.
         padding: const EdgeInsets.fromLTRB(0, 8, 0, NavBar.clearance),
         children: [
           GroupedList(

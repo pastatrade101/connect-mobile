@@ -118,11 +118,20 @@ class _MakutanoAppState extends State<MakutanoApp> {
   }
 }
 
-/// Home · Inbox · + · Trips · Work.
+/// Home · Inbox · Enquiries · Trips · Work.
 ///
-/// Five destinations chosen from what staff do all day, with creation in the middle
-/// where a thumb reaches. Anything the workspace or the permissions cannot use is
-/// not rendered at all — the tab simply does not exist for that person.
+/// Five destinations chosen from what staff do all day. Anything the workspace or
+/// the permissions cannot use is not rendered at all — the tab simply does not
+/// exist for that person.
+///
+/// The middle slot used to be a raised + opening a create sheet. For an operator
+/// that sheet offered exactly two things: "New enquiry", which is not how
+/// enquiries arrive — the marketplace, WhatsApp and the shared form all create
+/// them — and "Open inbox", a second door to the tab immediately beside it. A
+/// whole slot in the nav for one rare form and one redundant link. Enquiries
+/// takes it instead, because that is the list an operator actually opens all day.
+/// Creating one by hand is still there, on the Work feed, where an empty list is
+/// the moment you would want it.
 ///
 /// The account page is NOT one of them. It is the avatar in every header, and a
 /// destination already one tap away does not need a second of five slots on a
@@ -143,6 +152,10 @@ class _ShellState extends State<Shell> {
   final _inboxKey = GlobalKey<InboxScreenState>();
   final _workKey = GlobalKey<WorkScreenState>();
   final _tripsKey = GlobalKey<TripsScreenState>();
+
+  /// The Enquiries tab is the same work feed pinned to one kind, so it needs its
+  /// own key — two live WorkScreens sharing one GlobalKey is a runtime crash.
+  final _enquiriesKey = GlobalKey<WorkScreenState>();
 
   /// Does the fourth tab show Trips or Work?
   ///
@@ -259,25 +272,11 @@ class _ShellState extends State<Shell> {
     }
   }
 
-  void _openQuickCreate() {
-    final session = Api.instance.session;
-    if (session == null) return;
-    final actions = quickActionsFor(session);
-    if (actions.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Your account cannot create records')));
-      return;
-    }
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => QuickCreateSheet(
-        actions: actions,
-        onPick: (key) {
-          Navigator.pop(sheetContext);
-          _runAction(key);
-        },
-      ),
-    );
+  /// Enquiries, refreshed on the way in — it is the list most likely to have
+  /// changed since it was last looked at, because nothing in it is created here.
+  void _openEnquiries() {
+    setState(() => _tab = 2);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _enquiriesKey.currentState?.load());
   }
 
   void _signedOut() {
@@ -317,7 +316,15 @@ class _ShellState extends State<Shell> {
                 onOpenAccount: _openAccount,
               ),
               InboxScreen(key: _inboxKey, onOpenThread: _openThread, onOpenAccount: _openAccount),
-              const SizedBox.shrink(), // the centre button opens a sheet, never a page
+              // Enquiries: the work feed opened on the one kind, not a second
+              // screen duplicating it.
+              WorkScreen(
+                key: _enquiriesKey,
+                initialKind: 'enquiry',
+                pinned: true,
+                onCreate: _runAction,
+                onOpenAccount: _openAccount,
+              ),
               _tripsTab
                   ? TripsScreen(key: _tripsKey, onOpenTrip: _openTrip, onOpenAccount: _openAccount)
                   : WorkScreen(key: _workKey, onCreate: _runAction, onOpenAccount: _openAccount),
@@ -338,20 +345,9 @@ class _ShellState extends State<Shell> {
       // what a system tab bar does too.
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.fromLTRB(NavBar.gutter, 0, NavBar.gutter, NavBar.gutter),
-        // The box is tall enough to hold the raised + as well as the pill. A
-        // Stack does not receive taps outside its own bounds, so the lift has to
-        // be real height rather than an overflow, or the button stops working
-        // exactly where it looks most obviously tappable.
         child: SizedBox(
-          height: NavBar.height + NavBar.fabLift,
-          child: Stack(
-            children: [
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: NavBar.height,
-                child: ClipRRect(
+          height: NavBar.height,
+          child: ClipRRect(
                   borderRadius: BorderRadius.circular(NavBar.radius),
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
@@ -391,19 +387,17 @@ class _ShellState extends State<Shell> {
                               selected: _tab == 1,
                               onTap: () => _openInbox(),
                             ),
-                            // The middle slot draws nothing — the + rides above the
-                            // pill — but it still claims a fifth of the row, so the
-                            // four labels stay evenly spaced either side of it and
-                            // the button lands on the bar's true centre. It takes
-                            // taps as well: the button's circle stops short of the
-                            // bar's bottom edge, and a tap just under it obviously
-                            // means "create" rather than nothing at all.
-                            Expanded(
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onTap: _openQuickCreate,
-                                child: const SizedBox.expand(),
-                              ),
+                            // The bookmark, not the question mark the rest of the
+                            // app draws an enquiry with: a "?" in a tab bar reads
+                            // as Help wherever it appears. It is the icon the
+                            // create-enquiry action already uses, so the two still
+                            // agree.
+                            _NavItem(
+                              icon: Icons.bookmark_border_rounded,
+                              activeIcon: Icons.bookmark_rounded,
+                              label: 'Enquiries',
+                              selected: _tab == 2,
+                              onTap: _openEnquiries,
                             ),
                             _NavItem(
                               icon: _tripsTab ? Icons.map_outlined : Icons.assignment_outlined,
@@ -432,68 +426,6 @@ class _ShellState extends State<Shell> {
                     ),
                   ),
                 ),
-              ),
-              // Creation is an action, not a destination — so it is not a tab at
-              // all: a round button riding above the bar, in the one place
-              // nothing else can be.
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: Center(child: _CreateButton(onTap: _openQuickCreate)),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The raised +.
-///
-/// Round where the tabs are square, lifted where they are flat, and ringed in the
-/// bar's own surface so it reads as sitting on top of the pill rather than being
-/// punched through it.
-class _CreateButton extends StatelessWidget {
-  const _CreateButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final blue = Tone.accent(context);
-    final dark = Tone.isDark(context);
-
-    return Semantics(
-      label: 'New',
-      button: true,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: NavBar.fabSize,
-          height: NavBar.fabSize,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [blue, Color.lerp(blue, Colors.black, 0.24)!],
-            ),
-            border: Border.all(color: dark ? Colors.white.withValues(alpha: 0.14) : Colors.white, width: 3),
-            boxShadow: [
-              // The coloured glow is what makes it read as lifted rather than
-              // merely large; the black shadow underneath keeps it legible on the
-              // pale ground, where a blue glow alone disappears.
-              BoxShadow(color: blue.withValues(alpha: 0.45), blurRadius: 18, offset: const Offset(0, 8)),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: dark ? 0.45 : 0.18),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: const Icon(Icons.add_rounded, color: Colors.white, size: 30),
         ),
       ),
     );

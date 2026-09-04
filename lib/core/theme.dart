@@ -167,10 +167,6 @@ class NavBar {
   /// The pill itself.
   static const height = 64.0;
 
-  /// The round create button, and how far it rides above the pill's top edge.
-  static const fabSize = 56.0;
-  static const fabLift = 26.0;
-
   /// The pill's corner radius: a stadium, the roundest a bar this tall can be.
   static const radius = height / 2;
 
@@ -189,7 +185,11 @@ class NavBar {
   /// What a scrolling screen must keep clear at the bottom, measured from the
   /// screen edge. The bar now covers the home indicator itself, so this is the
   /// whole story — do not add the view padding on top of it.
-  static const clearance = gutter + height + fabLift + 12;
+  ///
+  /// It used to carry the raised create button's lift as well. Nothing rides
+  /// above the pill any more, and leaving that in would hold every scrolling
+  /// screen 26 short of the bar for a button that is not there.
+  static const clearance = gutter + height + 12;
 }
 
 ThemeData buildTheme({required Brightness brightness}) {

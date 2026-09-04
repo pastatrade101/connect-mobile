@@ -90,7 +90,7 @@ class _MoreScreenState extends State<MoreScreen> {
         MobileHeader(title: 'More', subtitle: session.tenantName, onBack: widget.onBack),
         Expanded(
           child: ListView(
-            // Clear the floating nav, raised + included.
+            // Clear the floating nav.
             padding: const EdgeInsets.only(bottom: NavBar.clearance),
             children: [
               GroupedList(
