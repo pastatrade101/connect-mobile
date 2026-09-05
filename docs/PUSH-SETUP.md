@@ -148,3 +148,38 @@ dart run rive_native:setup --verbose --platform ios
 ```
 
 Anyone cloning this repo will hit the same thing on their first iOS build.
+
+---
+
+## Verified working — 5 September 2026
+
+Delivered end to end to a real iPhone: FCM `200`, notification on the lock screen.
+Two faults had to be fixed, and either alone produced identical silence — nothing
+on the phone, no error, and a server that looked healthy.
+
+**1. The entitlements file was never wired into Xcode.** `Runner.entitlements` had
+`aps-environment` in it all along, but `CODE_SIGN_ENTITLEMENTS` appeared nowhere
+in `project.pbxproj`. iOS will not issue an APNs token without that entitlement,
+so FCM had nothing to deliver to. `device_tokens` said the same thing from the
+other end: two `android` rows, zero `ios`, across every build ever shipped.
+
+Check it in one command — if `aps-environment` is missing, nothing else matters:
+
+```
+codesign -d --entitlements :- build/ios/iphoneos/Runner.app | plutil -p -
+```
+
+**2. Firebase had no APNs authentication key**, which reads as
+`401 THIRD_PARTY_AUTH_ERROR — "Invalid APNs credential"`. That error means Google
+auth succeeded and Firebase could not reach Apple. The key is scoped **Sandbox &
+Production**, Team Scoped (All Topics) — neither can be changed after saving — and
+the same `.p8` is uploaded to BOTH the development and production slots in the
+Firebase console.
+
+**The server was never at fault.** `FCM_SERVICE_ACCOUNT` in production mints a
+Google OAuth token on demand and `src/lib/server/push.ts` implements FCM v1
+correctly; Android had been working through it since August.
+
+When iOS push is silent: check the binary's entitlements, then read FCM's status
+code. `401` is Firebase↔Apple. A `200` with nothing on the phone is device
+permission or Focus. Do not start in `push.ts`.
