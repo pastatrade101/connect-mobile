@@ -27,19 +27,35 @@ Future<void> _onBackgroundMessage(RemoteMessage message) async {}
 ///     minute, raising a real system notification for anything new. It stops the
 ///     moment a push token is registered, and covers the iOS Simulator, which can
 ///     never receive a real remote notification.
+/// What a tapped notification should open.
+///
+/// This was a bare conversation id, which quietly forced every push to mean
+/// "open this thread". A new enquiry HAS a conversation, so tapping one landed
+/// the operator in the Inbox — the right thread, but not the screen they had
+/// just been told about.
+class NotificationTarget {
+  const NotificationTarget.message(this.conversationId) : type = 'message';
+  const NotificationTarget.enquiry(this.conversationId) : type = 'enquiry';
+
+  final String type;
+  final String? conversationId;
+
+  bool get isEnquiry => type == 'enquiry';
+}
+
 class Notifications {
   Notifications._();
   static final Notifications instance = Notifications._();
 
   final _plugin = FlutterLocalNotificationsPlugin();
-  final _tapped = StreamController<String>.broadcast();
+  final _tapped = StreamController<NotificationTarget>.broadcast();
   Timer? _poller;
   final Set<String> _seen = <String>{};
   bool _ready = false;
   bool _pushAttached = false;
 
-  /// Conversation ids the user opened from a notification.
-  Stream<String> get onOpenConversation => _tapped.stream;
+  /// What the user opened from a notification.
+  Stream<NotificationTarget> get onOpenTarget => _tapped.stream;
 
   Future<void> init() async {
     if (_ready) return;
@@ -53,7 +69,8 @@ class Notifications {
       const InitializationSettings(android: android, iOS: ios),
       onDidReceiveNotificationResponse: (response) {
         final id = response.payload;
-        if (id != null && id.isNotEmpty) _tapped.add(id);
+        // Locally-raised notifications only ever come from the inbox poller.
+        if (id != null && id.isNotEmpty) _tapped.add(NotificationTarget.message(id));
       },
     );
 
@@ -131,7 +148,14 @@ class Notifications {
 
   void _routeFrom(RemoteMessage message) {
     final id = (message.data['conversationId'] ?? '').toString();
-    if (id.isNotEmpty) _tapped.add(id);
+    final target = (message.data['type'] ?? '').toString();
+    // An enquiry carries a conversationId too — it is kept so the thread is one
+    // tap away, but the destination is the enquiry list the push was about.
+    if (target == 'enquiry') {
+      _tapped.add(NotificationTarget.enquiry(id.isEmpty ? null : id));
+      return;
+    }
+    if (id.isNotEmpty) _tapped.add(NotificationTarget.message(id));
   }
 
   String get _platform => defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';

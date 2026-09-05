@@ -76,12 +76,13 @@ class MakutanoApp extends StatefulWidget {
 
 class _MakutanoAppState extends State<MakutanoApp> {
   final _navigator = GlobalKey<NavigatorState>();
-  late final StreamSubscription<String> _taps;
+  final _shell = GlobalKey<_ShellState>();
+  late final StreamSubscription<NotificationTarget> _taps;
 
   @override
   void initState() {
     super.initState();
-    _taps = Notifications.instance.onOpenConversation.listen(_openThread);
+    _taps = Notifications.instance.onOpenTarget.listen(_openTapped);
     if (Api.instance.signedIn) armAlerts();
   }
 
@@ -89,6 +90,22 @@ class _MakutanoAppState extends State<MakutanoApp> {
   void dispose() {
     _taps.cancel();
     super.dispose();
+  }
+
+  /// Where a tapped notification actually lands.
+  ///
+  /// An enquiry goes to the Enquiries destination inside the shell rather than
+  /// pushing a second copy of that screen on top of the app — the tab IS the
+  /// destination, and pushing a duplicate leaves the operator with a back arrow
+  /// to a list identical to the one behind it.
+  void _openTapped(NotificationTarget target) {
+    if (target.isEnquiry) {
+      _navigator.currentState?.popUntil((route) => route.isFirst);
+      _shell.currentState?.showEnquiries();
+      return;
+    }
+    final id = target.conversationId;
+    if (id != null && id.isNotEmpty) _openThread(id);
   }
 
   void _openThread(String conversationId) {
@@ -118,7 +135,7 @@ class _MakutanoAppState extends State<MakutanoApp> {
         darkTheme: buildTheme(brightness: Brightness.dark),
         themeMode: mode,
         home: Api.instance.signedIn
-            ? const Shell()
+            ? Shell(key: _shell)
             : LoginScreen(onSignedIn: _afterSignIn),
       ),
     );
@@ -306,6 +323,9 @@ class _ShellState extends State<Shell> {
         _openInbox();
     }
   }
+
+  /// Open Enquiries from outside the shell — a tapped push notification.
+  void showEnquiries() => _openEnquiries();
 
   /// Enquiries, refreshed on the way in — it is the list most likely to have
   /// changed since it was last looked at, because nothing in it is created here.

@@ -22,7 +22,21 @@ cd "$(dirname "$0")/.."
 
 TEAM=25X3LP3BZ6
 BUILD_DIR=$(mktemp -d -t makutano-testflight)
-trap 'rm -rf "$BUILD_DIR"' EXIT
+
+# An archive takes about five minutes, and everything that can fail after it —
+# the distribution certificate, the account, the upload itself — is fixed
+# OUTSIDE this script. Deleting the archive on failure turned each of those
+# into a five-minute retry, so a failed run keeps it and prints how to reuse
+# it. Only a successful run cleans up.
+ARCHIVE="${REUSE_ARCHIVE:-$BUILD_DIR/Runner.xcarchive}"
+trap 'code=$?
+  if [ "$code" -eq 0 ] || [ ! -d "${ARCHIVE:-}" ]; then
+    rm -rf "$BUILD_DIR"
+  else
+    echo
+    echo "Archive kept: $ARCHIVE"
+    echo "Retry without re-archiving:  REUSE_ARCHIVE=\"$ARCHIVE\" tool/testflight.sh"
+  fi' EXIT
 
 VERSION=$(grep -E '^version:' pubspec.yaml | sed 's/version: *//')
 echo "== Shipping $VERSION  (bundle tz.co.makutano.makutanoConnect, team $TEAM)"
@@ -56,12 +70,27 @@ if [ -d build/native_assets ]; then
   rm -rf build/native_assets
 fi
 
-echo "== Archiving"
-xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release \
-  -archivePath "$BUILD_DIR/Runner.xcarchive" -destination "generic/platform=iOS" \
-  -allowProvisioningUpdates archive 2>&1 | tail -3
+if [ -n "${REUSE_ARCHIVE:-}" ]; then
+  echo "== Reusing the archive from a previous run"
+  echo "   $ARCHIVE"
+  [ -d "$ARCHIVE" ] || { echo "REFUSING: REUSE_ARCHIVE is not an archive directory." >&2; exit 1; }
+  # The guard above compared pubspec with Generated.xcconfig, which says
+  # nothing about an archive built BEFORE the bump. Check the archive too, or
+  # reusing one quietly ships the previous build number.
+  GOT_ARCHIVE="$(/usr/libexec/PlistBuddy -c 'Print :ApplicationProperties:CFBundleShortVersionString' "$ARCHIVE/Info.plist" 2>/dev/null)+$(/usr/libexec/PlistBuddy -c 'Print :ApplicationProperties:CFBundleVersion' "$ARCHIVE/Info.plist" 2>/dev/null)"
+  echo "   archive $GOT_ARCHIVE   pubspec $WANT_NAME+$WANT_NUMBER"
+  if [ "$GOT_ARCHIVE" != "$WANT_NAME+$WANT_NUMBER" ]; then
+    echo "REFUSING: the reused archive is $GOT_ARCHIVE, not $WANT_NAME+$WANT_NUMBER. Re-archive." >&2
+    exit 1
+  fi
+else
+  echo "== Archiving"
+  xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release \
+    -archivePath "$ARCHIVE" -destination "generic/platform=iOS" \
+    -allowProvisioningUpdates archive 2>&1 | tail -3
+fi
 
-APP="$BUILD_DIR/Runner.xcarchive/Products/Applications/Runner.app"
+APP="$ARCHIVE/Products/Applications/Runner.app"
 echo "== Checking the archive before it goes anywhere"
 codesign --verify --deep --strict "$APP"
 for fw in "$APP"/Frameworks/*.framework; do
@@ -95,7 +124,7 @@ cat > "$BUILD_DIR/UploadOptions.plist" <<PLIST
 PLIST
 
 echo "== Uploading to App Store Connect"
-xcodebuild -exportArchive -archivePath "$BUILD_DIR/Runner.xcarchive" \
+xcodebuild -exportArchive -archivePath "$ARCHIVE" \
   -exportOptionsPlist "$BUILD_DIR/UploadOptions.plist" \
   -exportPath "$BUILD_DIR/upload" -allowProvisioningUpdates 2>&1 | tail -8
 
