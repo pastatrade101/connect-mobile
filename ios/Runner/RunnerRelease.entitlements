@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+		Release and Profile builds — TestFlight and the App Store.
+
+		APNs has two separate environments and a token minted in one is meaningless
+		in the other. A build distributed through TestFlight registers against
+		PRODUCTION APNs, so an app carrying `development` here gets a token Apple
+		will not deliver to, and the failure is silent: FCM accepts the send and
+		nothing arrives.
+
+		Debug builds use Runner.entitlements, which says `development`, because a
+		build installed straight from Xcode registers against the sandbox.
+	-->
+	<key>aps-environment</key>
+	<string>production</string>
+</dict>
+</plist>
