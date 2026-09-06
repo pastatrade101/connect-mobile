@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'core/api.dart';
 import 'core/notifications.dart';
@@ -22,6 +23,19 @@ import 'screens/work_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  /*
+   * Bundled fonts only, never the network.
+   *
+   * google_fonts otherwise downloads on first use and renders the platform face
+   * until it arrives — a different typeface with different metrics, mid-frame, on
+   * the launch that makes the first impression, and on Tanzanian mobile data that
+   * wait is not brief. The four weights ship in assets/google_fonts, so turning
+   * fetching off makes the typography deterministic and offline-safe; if a weight
+   * were ever missing it now falls back visibly at build time rather than
+   * silently reaching for the internet in production.
+   */
+  GoogleFonts.config.allowRuntimeFetching = false;
 
   // Nothing here may stop the app starting.
   //

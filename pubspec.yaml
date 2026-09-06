@@ -23,6 +23,7 @@ dependencies:
   flutter_map: ^8.3.2
   latlong2: ^0.10.1
   url_launcher: ^6.3.1
+  google_fonts: ^8.2.1
 
 dev_dependencies:
   flutter_test:
@@ -44,6 +45,15 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo.png
+    # Inter, bundled rather than fetched.
+    #
+    # google_fonts downloads at first launch by default and falls back to the
+    # system face until it lands — a different font, different metrics, and a
+    # visible reflow, on the one launch that makes the first impression. Most of
+    # this app's operators are on Tanzanian mobile data, where "first launch"
+    # can mean a long time on the fallback. Shipping the four weights we use
+    # costs 1.6MB and makes the typography deterministic offline.
+    - assets/google_fonts/
     # Optional Rive artwork. The folder is declared so a .riv dropped in here is
     # picked up without touching pubspec; RiveArt falls back when it is empty.
     - assets/rive/

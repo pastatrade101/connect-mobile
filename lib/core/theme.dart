@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -235,7 +236,8 @@ ThemeData buildTheme({required Brightness brightness}) {
       elevation: 0,
       scrolledUnderElevation: 0.5,
       centerTitle: false,
-      titleTextStyle: TextStyle(color: onGround, fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: -0.3),
+      // Outside interTextTheme's reach, so it names the family itself.
+      titleTextStyle: GoogleFonts.inter(color: onGround, fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: -0.3),
       systemOverlayStyle: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
     ),
     cardTheme: CardThemeData(
@@ -252,20 +254,88 @@ ThemeData buildTheme({required Brightness brightness}) {
     // Cormorant/Manrope pairing is deliberately NOT carried over: the palette is
     // what makes the two feel like one product, and a display serif set at phone
     // sizes costs readability in daylight that a colour swap does not.
-    textTheme: base.textTheme
-        .apply(bodyColor: onGround, displayColor: onGround)
-        .copyWith(
-          titleLarge: TextStyle(color: onGround, fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.4),
-          titleMedium: TextStyle(color: onGround, fontSize: 16, fontWeight: FontWeight.w600),
-          bodyMedium: TextStyle(color: onGround, fontSize: 15, height: 1.4),
-          bodySmall: TextStyle(color: muted, fontSize: 13, height: 1.35),
-          labelSmall: TextStyle(color: muted, fontSize: 11.5, fontWeight: FontWeight.w600, letterSpacing: 0.6),
-        ),
+    /*
+     * One scale, and every step in it is a decision.
+     *
+     * Wrapped in interTextTheme LAST, on purpose. copyWith REPLACES a style
+     * rather than merging it, so building the scale first and applying the
+     * family afterwards is what keeps these five roles from silently falling
+     * back to the platform face — which is exactly what a naive
+     * `textTheme: GoogleFonts.interTextTheme(...)` plus copyWith would have done,
+     * and it would have looked almost right.
+     *
+     * Sizes already in use are unchanged to the half-pixel. This is a change of
+     * typeface and of hierarchy, not of layout: an app that reflowed everywhere
+     * would be impossible to check. What is new is the roles that had no
+     * definition at all — display, headline, titleSmall, bodyLarge, labelLarge,
+     * labelMedium — which previously fell through to Material's defaults and gave
+     * screens nothing to reach for between "22pt bold" and "15pt regular".
+     *
+     * Tracking is negative at display sizes and positive at caption sizes because
+     * Inter is drawn that way: set large and untracked it reads loose, set small
+     * and untracked it reads tight.
+     */
+    textTheme: GoogleFonts.interTextTheme(
+      base.textTheme
+          .apply(bodyColor: onGround, displayColor: onGround)
+          .copyWith(
+            // Figures that carry a screen: a balance, a count, a distance.
+            displaySmall: TextStyle(
+              color: onGround,
+              fontSize: 32,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.9,
+              height: 1.12,
+              /*
+               * Tabular figures.
+               *
+               * This app is mostly columns of numbers — balances, counts, GPS
+               * ages, dates — and proportional digits give a 1 less width than a
+               * 4, so a figure that ticks over visibly shifts the text beside it.
+               * On a live count that updates while somebody is reading, that is a
+               * flicker. Inter carries tnum; these roles ask for it.
+               */
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+            headlineMedium: TextStyle(
+              color: onGround,
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.6,
+              height: 1.18,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+            headlineSmall: TextStyle(
+              color: onGround,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.3,
+              height: 1.25,
+            ),
+            // Unchanged: the screen title every screen already uses.
+            titleLarge: TextStyle(color: onGround, fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.4),
+            titleMedium: TextStyle(color: onGround, fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: -0.1),
+            titleSmall: TextStyle(
+              color: onGround,
+              fontSize: 14.5,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.05,
+              height: 1.3,
+            ),
+            bodyLarge: TextStyle(color: onGround, fontSize: 16, height: 1.45),
+            bodyMedium: TextStyle(color: onGround, fontSize: 15, height: 1.4),
+            bodySmall: TextStyle(color: muted, fontSize: 13, height: 1.35),
+            labelLarge: TextStyle(color: onGround, fontSize: 14.5, fontWeight: FontWeight.w600),
+            labelMedium: TextStyle(color: muted, fontSize: 12.5, fontWeight: FontWeight.w600, letterSpacing: 0.1),
+            // The eyebrow. Uppercase in use, which is why the tracking is generous.
+            labelSmall: TextStyle(color: muted, fontSize: 11.5, fontWeight: FontWeight.w600, letterSpacing: 0.6),
+          ),
+    ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         minimumSize: const Size.fromHeight(50),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        textStyle: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600),
+        textStyle: GoogleFonts.inter(fontSize: 15.5, fontWeight: FontWeight.w600),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -274,7 +344,7 @@ ThemeData buildTheme({required Brightness brightness}) {
         foregroundColor: onGround,
         side: BorderSide(color: dark ? Brand.darkLine : Brand.line),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        textStyle: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
+        textStyle: GoogleFonts.inter(fontSize: 14.5, fontWeight: FontWeight.w600),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
@@ -293,14 +363,16 @@ ThemeData buildTheme({required Brightness brightness}) {
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: dark ? Brand.darkAccent : Brand.accent, width: 1.6),
       ),
-      labelStyle: TextStyle(color: muted, fontSize: 14),
-      hintStyle: TextStyle(color: muted, fontSize: 15),
+      labelStyle: GoogleFonts.inter(color: muted, fontSize: 14),
+      hintStyle: GoogleFonts.inter(color: muted, fontSize: 15),
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: dark ? Brand.darkSurface : Brand.surface,
       indicatorColor: dark ? Brand.darkAccentWash : Brand.accentWash,
       height: 64,
-      labelTextStyle: WidgetStatePropertyAll(TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: muted)),
+      labelTextStyle: WidgetStatePropertyAll(
+        GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w600, color: muted),
+      ),
       elevation: 0,
     ),
     // Sheets and dialogs sit on paper, not on a tinted container.
@@ -318,7 +390,7 @@ ThemeData buildTheme({required Brightness brightness}) {
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: dark ? Brand.darkPanel : Brand.ink,
-      contentTextStyle: const TextStyle(color: Colors.white, fontSize: 14),
+      contentTextStyle: GoogleFonts.inter(color: Colors.white, fontSize: 14),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
   );
@@ -354,4 +426,11 @@ class _FadeThroughTransitions extends PageTransitionsBuilder {
       ),
     );
   }
+}
+
+/// Typography helpers, for the places a role alone is not enough.
+extension AppTextStyles on TextStyle {
+  /// Digits of equal width, so a changing number does not move the text beside
+  /// it. For any column, table or live counter — see displaySmall above for why.
+  TextStyle get tnum => copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
 }
