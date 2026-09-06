@@ -111,6 +111,8 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> with WidgetsBindi
   Timer? _poll;
   bool _followed = false;
   bool _markerCardOpen = false;
+  /// Set when the basemap will not load, so the grey is explained rather than mute.
+  bool _tilesFailed = false;
   _Basemap _base = _basemaps.first;
 
   /// The route window, and the state of the one request that fetches it.
@@ -379,7 +381,11 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> with WidgetsBindi
   }
 
   void _choose(_Basemap b) {
-    setState(() => _base = b);
+    setState(() {
+      _base = b;
+      // A different provider may well be reachable when this one is not.
+      _tilesFailed = false;
+    });
     // A view with a lower ceiling must not leave the operator staring at grey.
     if (_map.camera.zoom > b.maxZoom) _map.move(_map.camera.center, b.maxZoom);
   }
@@ -417,6 +423,13 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> with WidgetsBindi
                 children: [
                   Positioned.fill(child: _mapOrState(context)),
                   Positioned(left: 14, right: 14, top: 12, child: _controls(context)),
+                  if (_tilesFailed)
+                    Positioned(
+                      left: 14,
+                      right: 14,
+                      top: 68,
+                      child: Center(child: _tileNotice(context)),
+                    ),
 
                   _bottomSheet(context),
                 ],
@@ -427,6 +440,31 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> with WidgetsBindi
       ),
     );
   }
+
+  /// Says the imagery is missing — never that the vehicle is.
+  Widget _tileNotice(BuildContext context) => DecoratedBox(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.94),
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 10)],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.layers_clear_outlined, size: 16, color: Tone.muted(context)),
+              const SizedBox(width: 7),
+              Flexible(
+                child: Text(
+                  'Map imagery could not load. The vehicle position below is still current.',
+                  style: TextStyle(fontSize: 12, color: Tone.muted(context)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
 
   // ---------------------------------------------------------------- header --
 
@@ -684,6 +722,17 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> with WidgetsBindi
           urlTemplate: _base.url,
           userAgentPackageName: 'tz.co.makutano.makutanoConnect',
           maxZoom: _base.maxZoom,
+          /*
+           * A basemap that fails to load is a flat grey rectangle and nothing
+           * else — indistinguishable from a map of empty ground, which is a real
+           * thing to see in the Serengeti. Say which it is: the notice tells the
+           * operator the imagery is missing rather than the vehicle, and the log
+           * line names the reason so it can be diagnosed without the handset.
+           */
+          errorTileCallback: (tile, error, _) {
+            debugPrint('[tracking] tile ${tile.coordinates} failed: $error');
+            if (mounted && !_tilesFailed) setState(() => _tilesFailed = true);
+          },
         ),
         if (track.length > 1)
           PolylineLayer(
@@ -737,6 +786,16 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> with WidgetsBindi
                 width: 250,
                 height: _markerCardOpen ? 170 : 56,
                 alignment: Alignment.bottomCenter,
+                /*
+                 * Stays upright when the map is turned.
+                 *
+                 * Marker.rotate defaults to FALSE, which pins a marker to the
+                 * map's rotation rather than the screen's — right for something
+                 * drawn on the ground, wrong for a card of text and a vehicle
+                 * icon. Rotating the map left the card upside down and the
+                 * reading of it impossible.
+                 */
+                rotate: true,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
