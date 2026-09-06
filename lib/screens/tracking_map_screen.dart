@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -43,6 +44,30 @@ class TrackingMapScreen extends StatefulWidget {
 
   @override
   State<TrackingMapScreen> createState() => _TrackingMapScreenState();
+}
+
+/// A tile request that gives up instead of hanging.
+///
+/// dart:io's default connection timeout is long enough that a blocked or
+/// silently-dropping network produces no error for over a minute — during which
+/// flutter_map has nothing to report and the map is simply a grey rectangle with
+/// no explanation. On a phone in the field that is indistinguishable from a
+/// broken app. Eight seconds is well past a slow-but-working 3G tile and well
+/// short of a person's patience.
+class _TimeoutTileClient extends http.BaseClient {
+  _TimeoutTileClient() : _inner = http.Client();
+  final http.Client _inner;
+  static const _limit = Duration(seconds: 8);
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) =>
+      _inner.send(request).timeout(_limit);
+
+  @override
+  void close() {
+    _inner.close();
+    super.close();
+  }
 }
 
 /// A basemap the operator can choose between.
@@ -113,6 +138,7 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> with WidgetsBindi
   bool _markerCardOpen = false;
   /// Set when the basemap will not load, so the grey is explained rather than mute.
   bool _tilesFailed = false;
+  final _tileClient = _TimeoutTileClient();
   _Basemap _base = _basemaps.first;
 
   /// The route window, and the state of the one request that fetches it.
@@ -160,6 +186,7 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> with WidgetsBindi
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _poll?.cancel();
+    _tileClient.close();
     super.dispose();
   }
 
@@ -423,13 +450,21 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> with WidgetsBindi
                 children: [
                   Positioned.fill(child: _mapOrState(context)),
                   Positioned(left: 14, right: 14, top: 12, child: _controls(context)),
-                  if (_tilesFailed)
-                    Positioned(
-                      left: 14,
-                      right: 14,
-                      top: 68,
-                      child: Center(child: _tileNotice(context)),
+                  // Screen-anchored, so neither zoom nor rotation touches them.
+                  Positioned(
+                    left: 14,
+                    right: 14,
+                    top: 68,
+                    child: Column(
+                      children: [
+                        if (_tilesFailed) _tileNotice(context),
+                        if (_markerCardOpen && _here != null) ...[
+                          if (_tilesFailed) const SizedBox(height: 8),
+                          _vehicleCard(context, _tone(context)),
+                        ],
+                      ],
                     ),
+                  ),
 
                   _bottomSheet(context),
                 ],
@@ -457,7 +492,11 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> with WidgetsBindi
               const SizedBox(width: 7),
               Flexible(
                 child: Text(
-                  'Map imagery could not load. The vehicle position below is still current.',
+                  // Naming the basemap matters: the three come from three
+                  // different hosts, so one being unreachable says nothing about
+                  // the others, and switching is the fix a person can actually apply.
+                  '${_base.label} imagery could not load — try another basemap above. '
+                  'The vehicle position is still current.',
                   style: TextStyle(fontSize: 12, color: Tone.muted(context)),
                 ),
               ),
@@ -729,9 +768,24 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> with WidgetsBindi
            * operator the imagery is missing rather than the vehicle, and the log
            * line names the reason so it can be diagnosed without the handset.
            */
+          tileProvider: NetworkTileProvider(httpClient: _tileClient),
           errorTileCallback: (tile, error, _) {
-            debugPrint('[tracking] tile ${tile.coordinates} failed: $error');
+            debugPrint('[tracking] ${_base.key} tile ${tile.coordinates} failed: $error');
             if (mounted && !_tilesFailed) setState(() => _tilesFailed = true);
+          },
+          /*
+           * One tile arriving is proof the basemap works, and it clears the
+           * notice. Without this the warning could only be dismissed by changing
+           * basemap — so a network that recovered still showed an app insisting
+           * the imagery was missing while it was plainly drawing.
+           */
+          tileBuilder: (context, tileWidget, tile) {
+            if (_tilesFailed && mounted) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted && _tilesFailed) setState(() => _tilesFailed = false);
+              });
+            }
+            return tileWidget;
           },
         ),
         if (track.length > 1)
@@ -780,42 +834,38 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> with WidgetsBindi
             markers: [
               Marker(
                 point: here,
-                // Tall enough to hold the tooltip ABOVE the vehicle, so the popup
-                // belongs to the thing that was tapped rather than appearing at the
-                // other end of the screen.
-                width: 250,
-                height: _markerCardOpen ? 170 : 56,
-                alignment: Alignment.bottomCenter,
+                width: 56,
+                height: 56,
                 /*
-                 * Stays upright when the map is turned.
+                 * The ICON only. The card that opens on tap is no longer here.
                  *
-                 * Marker.rotate defaults to FALSE, which pins a marker to the
-                 * map's rotation rather than the screen's — right for something
-                 * drawn on the ground, wrong for a card of text and a vehicle
-                 * icon. Rotating the map left the card upside down and the
-                 * reading of it impossible.
+                 * A marker's child is drawn inside the map, and the map is
+                 * transformed as a whole while a pinch is in progress — so a card
+                 * of text grew and shrank with the gesture, which reads as the
+                 * interface stretching rather than the map zooming. rotate: true
+                 * fixed the same problem for rotation but cannot fix scale,
+                 * because scale is applied to the layer, not to the marker.
+                 *
+                 * Geography belongs on the map; a panel of text belongs on the
+                 * screen. The card now lives in the screen's own Stack, anchored
+                 * beneath the controls, where no map transform reaches it.
                  */
                 rotate: true,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_markerCardOpen) _tooltip(context, tone),
-                    GestureDetector(
-                      onTap: () => setState(() => _markerCardOpen = !_markerCardOpen),
-                      child: Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: tone,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 3.5),
-                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 10)],
-                        ),
-                        child: const Icon(Icons.directions_car_rounded, size: 23, color: Colors.white),
+                child: GestureDetector(
+                  onTap: () => setState(() => _markerCardOpen = !_markerCardOpen),
+                  child: Center(
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: tone,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 3.5),
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 10)],
                       ),
+                      child: const Icon(Icons.directions_car_rounded, size: 23, color: Colors.white),
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -932,9 +982,14 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> with WidgetsBindi
   ///
   /// A card at the bottom of the screen makes the operator work out which pin it
   /// belongs to. Above the marker there is nothing to work out.
-  Widget _tooltip(BuildContext context, Color tone) {
+  /// The tapped vehicle, drawn on the SCREEN rather than on the map.
+  ///
+  /// It used to be a marker's child, which put it inside the map's transform:
+  /// a pinch scaled the text along with the ground. Here nothing the map does
+  /// reaches it, and it can be dismissed by tapping the map or the marker again.
+  Widget _vehicleCard(BuildContext context, Color tone) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
+      constraints: const BoxConstraints(maxWidth: 340),
       padding: const EdgeInsets.fromLTRB(13, 10, 13, 11),
       decoration: BoxDecoration(
         color: Tone.surface(context),
