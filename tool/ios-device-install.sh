@@ -65,10 +65,20 @@ for fw in "$APP"/Frameworks/*.framework; do
   fi
 done
 
-if [ "$resigned" -gt 0 ]; then
-  # The app's seal covers the old framework hashes, so it must be re-sealed.
-  codesign --force --sign "$IDENTITY" --entitlements "$ENT" "$APP"
-fi
+# Re-seal ALWAYS, not only when a framework was re-signed this run.
+#
+# Guarding this on "$resigned > 0" fails on the second and later incremental
+# builds: the frameworks are already properly signed from the previous run, so
+# nothing is ad-hoc, resigned stays 0 — and the re-seal is skipped even though
+# the build has since rewritten App.framework's contents underneath a seal that
+# still names the old hashes. codesign then reports
+#
+#   build/ios/iphoneos/Runner.app: a sealed resource is missing or invalid
+#
+# which reads as a signing-identity problem and is not one. It cost two failed
+# installs before the pattern was clear: clean builds worked, incremental ones
+# did not. Re-sealing unconditionally is cheap and idempotent.
+codesign --force --sign "$IDENTITY" --entitlements "$ENT" "$APP"
 rm -f "$ENT"
 
 codesign --verify --deep --strict "$APP"

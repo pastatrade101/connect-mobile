@@ -821,7 +821,21 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> with WidgetsBindi
             polylines: [
               // Drawn from the fixes verbatim. A prettier curve would be a road
               // the vehicle never took.
-              Polyline(points: track, strokeWidth: 4, color: tone.withValues(alpha: 0.55)),
+              //
+              // Yellow, and the same yellow on every basemap. It used to take the
+              // STATE's colour at 55% opacity, which made the route mean two
+              // things at once and left it barely visible: brown on the roads of
+              // the standard map, grey-on-grey when the state was OFFLINE. The
+              // route is where the vehicle went — it does not change with how
+              // recently the tracker reported, so it should not change colour
+              // with it either.
+              //
+              // The dark casing underneath is what makes one colour work on all
+              // three: a pale line is legible over satellite imagery and vanishes
+              // into the standard map's cream, and vice versa. Drawn as a wider
+              // line beneath rather than as a border so it reads at any zoom.
+              Polyline(points: track, strokeWidth: 7, color: const Color(0xCC2B2B28)),
+              Polyline(points: track, strokeWidth: 4, color: const Color(0xFFFFC400)),
             ],
           ),
         // Both ends of the drive, so the line has a direction the eye can read:
