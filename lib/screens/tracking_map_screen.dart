@@ -9,6 +9,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 import '../core/motion.dart';
 import '../core/theme.dart';
+import '../core/tracking_math.dart';
 import '../widgets/primitives.dart';
 
 /// Where the vehicle is, on a map an operator can actually work from.
@@ -85,7 +86,8 @@ const _labels = <String, String>{
   'STALE': 'Location may be outdated',
   'OFFLINE': 'No recent GPS signal',
   'NOT_CONFIGURED': 'Tracking not configured',
-  'UNAVAILABLE': 'Tracking temporarily unavailable',
+  // The SERVICE, never the vehicle: this must never read as offline.
+  'UNAVAILABLE': 'Tracking service temporarily unavailable',
 };
 
 /// Never colour alone: an icon carries the same meaning for anyone who cannot
@@ -99,7 +101,7 @@ const _icons = <String, IconData>{
   'UNAVAILABLE': Icons.cloud_off_rounded,
 };
 
-class _TrackingMapScreenState extends State<TrackingMapScreen> {
+class _TrackingMapScreenState extends State<TrackingMapScreen> with WidgetsBindingObserver {
   final MapController _map = MapController();
   final DraggableScrollableController _sheet = DraggableScrollableController();
 
@@ -111,6 +113,18 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
   bool _markerCardOpen = false;
   _Basemap _base = _basemaps.first;
 
+  /// The route window, and the state of the one request that fetches it.
+  ///
+  /// History is fetched ONCE per change of preset and never on the poll: the
+  /// poll carries the position alone, and the route is kept from the last
+  /// answer that carried one. [_historyRequest] is a ticket — an answer for a
+  /// preset the operator has since moved off is dropped, not drawn.
+  String _preset = routePresets.first;
+  bool _historyLoading = true;
+  String? _historyError;
+  int? _historyHours;
+  int _historyRequest = 0;
+
   /// The fleet, and which of it we are watching. Null vehicle = the trip's own,
   /// which is how the screen opens.
   List<Map<String, dynamic>> _fleet = const [];
@@ -121,6 +135,12 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
   /// a safari vehicle does not need second-by-second truth.
   static const _interval = Duration(seconds: 25);
 
+  /// Whole-country framing for a tracker that is linked but has never sent a
+  /// fix. A map of Tanzania with no pin says "nothing yet"; a blank grey square
+  /// says "broken".
+  static const _tanzania = LatLng(-6.37, 34.89);
+  static const _tanzaniaZoom = 5.4;
+
   static const _collapsed = 0.18;
   static const _medium = 0.42;
   static const _expanded = 0.88;
@@ -128,38 +148,85 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load(withHistory: true);
     _loadFleet();
-    _poll = Timer.periodic(_interval, (_) => _load());
+    _startPolling();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _poll?.cancel();
     super.dispose();
   }
 
+  /// Polling follows the app, not the clock.
+  ///
+  /// A screen in the background is not being looked at, and a fetch every
+  /// twenty-five seconds that nobody sees is pure bundle and battery. On the
+  /// way back the first thing an operator wants is the truth NOW, not in up to
+  /// twenty-five seconds — hence the immediate load before the timer restarts.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.paused || AppLifecycleState.inactive || AppLifecycleState.hidden:
+        _stopPolling();
+      case AppLifecycleState.resumed:
+        _startPolling();
+        _load();
+      case AppLifecycleState.detached:
+        break;
+    }
+  }
+
+  void _startPolling() {
+    _poll?.cancel();
+    _poll = Timer.periodic(_interval, (_) => _load());
+  }
+
+  void _stopPolling() {
+    _poll?.cancel();
+    _poll = null;
+  }
+
   Future<void> _load({bool withHistory = false}) async {
+    // Which vehicle, and which route request, this answer will belong to. An
+    // answer that arrives after the operator has switched vehicle or preset is
+    // for a question nobody is asking any more.
+    final vehicle = _vehicleId;
+    final request = withHistory ? ++_historyRequest : _historyRequest;
+    final hours = withHistory ? hoursForPreset(_preset, DateTime.now()) : null;
+    bool stale() => !mounted || vehicle != _vehicleId || (withHistory && request != _historyRequest);
     try {
       // Whichever vehicle is selected. The server resolves ownership either way;
       // the app never sends a tracker identifier.
-      final data = _vehicleId == null
-          ? await Api.instance.tripTracking(widget.tripId, history: withHistory)
-          : await Api.instance.vehicleTracking(_vehicleId!, history: withHistory);
-      if (!mounted) return;
+      final data = vehicle == null
+          ? await Api.instance.tripTracking(widget.tripId, history: withHistory, hours: hours)
+          : await Api.instance.vehicleTracking(vehicle, history: withHistory, hours: hours);
+      if (stale()) return;
       setState(() {
         // History arrives once. Refetching a day of fixes every twenty-five
         // seconds would cost the operator's bundle for nothing.
         _data = (withHistory || data['history'] != null) ? data : {...data, 'history': _data?['history']};
         _error = null;
         _loading = false;
+        if (withHistory) {
+          _historyLoading = false;
+          _historyError = null;
+          _historyHours = hours;
+        }
       });
       _fitOnce();
     } catch (error) {
-      if (!mounted) return;
+      if (stale()) return;
       setState(() {
         _error = error is ApiException ? error.message : 'Could not reach tracking.';
         _loading = false;
+        if (withHistory) {
+          _historyLoading = false;
+          _historyError = _error;
+        }
       });
     }
   }
@@ -184,14 +251,72 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
       _followed = false;
       _markerCardOpen = false;
       _data = null;
+      _error = null;
+      _historyLoading = true;
+      _historyError = null;
+    });
+    _load(withHistory: true);
+  }
+
+  /// Fetch the route for the current preset — once, now.
+  void _reloadHistory() {
+    setState(() {
+      _historyLoading = true;
+      _historyError = null;
+    });
+    _load(withHistory: true);
+  }
+
+  void _choosePreset(String preset) {
+    if (preset == _preset) return;
+    _preset = preset;
+    _reloadHistory();
+  }
+
+  /// Start over: position and route both.
+  void _retry() {
+    setState(() {
+      _loading = true;
+      _data = null;
+      _error = null;
+      _historyLoading = true;
+      _historyError = null;
     });
     _load(withHistory: true);
   }
 
   String get _title => _vehicleName ?? widget.vehicleLabel ?? 'Vehicle';
 
+  /// The plate, from the tracking answer or — before it arrives — the fleet
+  /// list. Blank is null: an empty chip is worse than no chip.
+  String? get _registration {
+    final own = (_data?['registration'] as String?)?.trim();
+    if (own != null && own.isNotEmpty) return own;
+    for (final v in _fleet) {
+      if (v['id'] == _vehicleId) {
+        final plate = (v['registration'] as String?)?.trim();
+        return (plate == null || plate.isEmpty) ? null : plate;
+      }
+    }
+    return null;
+  }
+
   Map<String, dynamic>? get _position => _data?['position'] as Map<String, dynamic>?;
   String get _state => (_data?['state'] as String?) ?? 'UNAVAILABLE';
+
+  /// Nothing has answered yet. Not a state the server has — it is ours, and it
+  /// must not be dressed as one of theirs (an unanswered request is not the
+  /// service being unavailable, let alone the vehicle being offline).
+  bool get _checking => _loading && _data == null;
+
+  /// Linked to a tracker that has never sent a fix: a state of its own, and
+  /// the one case where an empty map is the truthful picture.
+  bool get _noFixYet =>
+      _data != null &&
+      _data!['linked'] == true &&
+      _position == null &&
+      _state != 'NOT_CONFIGURED' &&
+      _state != 'UNAVAILABLE';
 
   LatLng? get _here {
     final p = _position;
@@ -201,18 +326,36 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
     return LatLng(lat, lng);
   }
 
-  List<LatLng> get _track {
-    final raw = (_data?['history'] as Map<String, dynamic>?)?['points'] as List?;
-    if (raw == null) return const [];
-    return raw
-        .whereType<List>()
-        .map((t) => LatLng((t[0] as num).toDouble(), (t[1] as num).toDouble()))
-        .toList(growable: false);
-  }
+  Map<String, dynamic>? get _history => _data?['history'] as Map<String, dynamic>?;
+  List<GeoPoint> get _trackPoints => trackPoints(_history?['points']);
+  List<LatLng> get _track => [for (final p in _trackPoints) LatLng(p.lat, p.lng)];
+  bool get _historyTruncated => _history?['truncated'] == true;
+
+  /// A route section makes sense once there is a tracker to have recorded one.
+  /// While the service is down and nothing was drawn, "no route in this range"
+  /// would be a claim we cannot make.
+  bool get _showsRoute =>
+      _data != null && _state != 'NOT_CONFIGURED' && (_state != 'UNAVAILABLE' || _trackPoints.isNotEmpty);
 
   DateTime? get _fixAt => DateTime.tryParse(_position?['recordedAt'] as String? ?? '');
   DateTime? get _checkedAt => DateTime.tryParse(_data?['checkedAt'] as String? ?? '');
   int? get _speed => (_position?['speedKph'] as num?)?.round();
+
+  String get _stateText => _checking ? 'Checking…' : (_labels[_state] ?? _state);
+  IconData get _stateIcon => _checking ? Icons.gps_not_fixed_rounded : (_icons[_state] ?? Icons.gps_not_fixed_rounded);
+
+  /// One calm sentence for the states that need explaining. Live needs none,
+  /// and a tracker with no fix yet has already been explained.
+  String? get _explanation {
+    if (_checking || _noFixYet) return null;
+    return switch (_state) {
+      'STALE' => 'The vehicle may have moved since this fix.',
+      'OFFLINE' => 'This tracker has not reported recently.',
+      'NOT_CONFIGURED' => 'Connect a phone or GPS tracker to see this vehicle on the map.',
+      'UNAVAILABLE' => "We couldn't reach the tracking service. This says nothing about where the vehicle is.",
+      _ => null,
+    };
+  }
 
   /// Centre once, on the first fix. After that the operator owns the camera —
   /// yanking the map back mid-pinch is how a map stops being usable.
@@ -226,11 +369,14 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
     });
   }
 
-  Color _tone(BuildContext c) => switch (_state) {
-    'LIVE' || 'RECENT' => Tone.success(c),
-    'STALE' || 'UNAVAILABLE' => Tone.warning(c),
-    _ => Tone.muted(c),
-  };
+  Color _tone(BuildContext c) {
+    if (_checking) return Tone.muted(c);
+    return switch (_state) {
+      'LIVE' || 'RECENT' => Tone.success(c),
+      'STALE' || 'UNAVAILABLE' => Tone.warning(c),
+      _ => Tone.muted(c),
+    };
+  }
 
   void _choose(_Basemap b) {
     setState(() => _base = b);
@@ -284,17 +430,14 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
 
   // ---------------------------------------------------------------- header --
 
-  /// WHAT vehicle, and WHAT state, readable at a glance.
-  ///
-  /// Deliberately not dressed as a link. This app has no vehicle-detail screen
-  /// to open, and a chevron that goes nowhere is worse than no chevron — the
-  /// route out of here is Trip details, which is real.
+  /// The chrome, and only the chrome: a way back, what this screen is, and the
+  /// switcher when there is a fleet to switch between. The vehicle itself
+  /// lives in the sheet, where its state sits beside its clocks.
   Widget _header(BuildContext context) {
-    final tone = _tone(context);
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(4, 6, 16, 10),
+        padding: const EdgeInsets.fromLTRB(4, 4, 8, 6),
         child: Row(
           children: [
             // 48px target, not a 20px icon.
@@ -308,40 +451,19 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
                 tooltip: 'Back',
               ),
             ),
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(color: Tone.wash(context, tone), borderRadius: BorderRadius.circular(12)),
-              child: Icon(Icons.directions_car_rounded, size: 22, color: tone),
-            ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 2),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _title,
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, height: 1.15, color: Tone.ink(context)),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      Icon(_icons[_state] ?? Icons.gps_not_fixed_rounded, size: 15, color: tone),
-                      const SizedBox(width: 5),
-                      Flexible(
-                        child: Text(
-                          _loading ? 'Checking…' : (_labels[_state] ?? _state),
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: tone),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+              child: Text(
+                'Live tracking',
+                style: TextStyle(
+                  fontSize: 21,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.3,
+                  height: 1.15,
+                  color: Tone.ink(context),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             // Only offered when the tenant actually has more than one vehicle:
@@ -477,11 +599,13 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
   // ------------------------------------------------------------------- map --
 
   Widget _mapOrState(BuildContext context) {
-    if (_loading) {
+    if (_checking) {
       return Center(child: CircularProgressIndicator(color: Tone.accent(context), strokeWidth: 2.5));
     }
     final here = _here;
-    if (here == null) return _noPosition(context);
+    // A linked tracker with no fix yet gets the country, not a placeholder:
+    // the map is the truthful picture, and the sheet says why it is empty.
+    if (here == null && !_noFixYet) return _noPosition(context);
     return _mapView(context, here, _track, _tone(context));
   }
 
@@ -519,10 +643,7 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
             SizedBox(
               height: 46,
               child: FilledButton.icon(
-                onPressed: () {
-                  setState(() => _loading = true);
-                  _load(withHistory: true);
-                },
+                onPressed: _retry,
                 icon: const Icon(Icons.refresh_rounded, size: 19),
                 label: const Text('Try again', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
               ),
@@ -533,12 +654,15 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
     );
   }
 
-  Widget _mapView(BuildContext context, LatLng here, List<LatLng> track, Color tone) {
+  Widget _mapView(BuildContext context, LatLng? here, List<LatLng> track, Color tone) {
+    final end = track.length > 1 ? track.last : null;
+    // The end of the recording — unless the vehicle is already standing on it.
+    final showEnd = end != null && (here == null || !_same(end, here));
     return FlutterMap(
       mapController: _map,
       options: MapOptions(
-        initialCenter: here,
-        initialZoom: 14,
+        initialCenter: here ?? _tanzania,
+        initialZoom: here == null ? _tanzaniaZoom : 14,
         maxZoom: _base.maxZoom,
         // Tapping the map dismisses the tooltip, the way a map should.
         onTap: (_, __) => setState(() => _markerCardOpen = false),
@@ -569,7 +693,8 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
               Polyline(points: track, strokeWidth: 4, color: tone.withValues(alpha: 0.55)),
             ],
           ),
-        // Where the drive began, so the line has a direction the eye can read.
+        // Both ends of the drive, so the line has a direction the eye can read:
+        // a hollow ring where the recording began, a solid dot where it stops.
         if (track.length > 1)
           MarkerLayer(
             markers: [
@@ -585,45 +710,64 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
                   ),
                 ),
               ),
-            ],
-          ),
-        MarkerLayer(
-          markers: [
-            Marker(
-              point: here,
-              // Tall enough to hold the tooltip ABOVE the vehicle, so the popup
-              // belongs to the thing that was tapped rather than appearing at the
-              // other end of the screen.
-              width: 250,
-              height: _markerCardOpen ? 170 : 56,
-              alignment: Alignment.bottomCenter,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_markerCardOpen) _tooltip(context, tone),
-                  GestureDetector(
-                    onTap: () => setState(() => _markerCardOpen = !_markerCardOpen),
-                    child: Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: tone,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3.5),
-                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 10)],
-                      ),
-                      child: const Icon(Icons.directions_car_rounded, size: 23, color: Colors.white),
+              if (showEnd)
+                Marker(
+                  point: end,
+                  width: 16,
+                  height: 16,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: tone,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2.5),
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 6)],
                     ),
                   ),
-                ],
+                ),
+            ],
+          ),
+        if (here != null)
+          MarkerLayer(
+            markers: [
+              Marker(
+                point: here,
+                // Tall enough to hold the tooltip ABOVE the vehicle, so the popup
+                // belongs to the thing that was tapped rather than appearing at the
+                // other end of the screen.
+                width: 250,
+                height: _markerCardOpen ? 170 : 56,
+                alignment: Alignment.bottomCenter,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_markerCardOpen) _tooltip(context, tone),
+                    GestureDetector(
+                      onTap: () => setState(() => _markerCardOpen = !_markerCardOpen),
+                      child: Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: tone,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3.5),
+                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 10)],
+                        ),
+                        child: const Icon(Icons.directions_car_rounded, size: 23, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
       ],
     );
   }
+
+  /// Two fixes at the same spot, to within a tenth of a metre.
+  static bool _same(LatLng a, LatLng b) =>
+      (a.latitude - b.latitude).abs() < 1e-6 && (a.longitude - b.longitude).abs() < 1e-6;
 
   // -------------------------------------------------------------- controls --
 
@@ -837,15 +981,21 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
                       ),
                     ),
                   ),
+                  _vehicleRow(context, tone),
+                  const SizedBox(height: 16),
                   _statusBlock(context, tone),
                   if (_position != null) ...[
                     const SizedBox(height: 18),
                     _metrics(context),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 14),
                     _actions(context),
                   ],
+                  if (_showsRoute) ...[
+                    const SizedBox(height: 22),
+                    _routeBlock(context, tone),
+                  ],
                   if (widget.tripTitle != null && _vehicleId == null) ...[
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 22),
                     _tripBlock(context),
                   ],
                   const SizedBox(height: 16),
@@ -876,37 +1026,142 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
     );
   }
 
+  /// WHO this is, and WHAT state — the row the eye lands on when the sheet is
+  /// at its lowest, and the one thing on it that is always readable.
+  ///
+  /// The whole row is the switcher's target: an operator with a fleet taps the
+  /// vehicle to change vehicle, which is where a finger goes anyway. With one
+  /// vehicle the tap does nothing but acknowledge itself, and the chevron that
+  /// would promise a switch is not drawn — this app has no vehicle-detail
+  /// screen, and a chevron that goes nowhere is worse than none.
+  Widget _vehicleRow(BuildContext context, Color tone) {
+    final switchable = _fleet.length > 1;
+    final plate = _registration;
+    return Semantics(
+      button: switchable,
+      label: switchable ? 'Switch vehicle' : null,
+      child: PressableRow(
+        onTap: () {
+          if (switchable) _openFleetSheet(context);
+        },
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 56),
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(color: Tone.wash(context, tone), borderRadius: BorderRadius.circular(13)),
+                child: Icon(Icons.directions_car_rounded, size: 24, color: tone),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _title,
+                      style: TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w700,
+                        height: 1.15,
+                        letterSpacing: -0.2,
+                        color: Tone.ink(context),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (plate != null) ...[
+                      const SizedBox(height: 4),
+                      // A plate is read letter by letter, so it is set like one:
+                      // fixed-pitch where the platform has it, spaced where not.
+                      Text(
+                        plate,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1.1,
+                          fontFamily: 'Menlo',
+                          fontFamilyFallback: const ['Roboto Mono', 'monospace'],
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                          color: Tone.muted(context),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Capped so a long state ("Location may be outdated") wraps to
+              // two lines instead of squeezing the name out of the row.
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 148),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(_stateIcon, size: 16, color: tone),
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        _stateText,
+                        textAlign: TextAlign.end,
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, height: 1.2, color: tone),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (switchable) ...[
+                const SizedBox(width: 2),
+                Icon(Icons.chevron_right_rounded, size: 24, color: Tone.muted(context)),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// THE TWO CLOCKS — and, when the state needs one, a sentence.
+  ///
+  /// The age of the fix is the big number; the age of our knowledge is the
+  /// small line under it. Conflating them is how a screen claims to be live
+  /// while nothing has been fetched for ten minutes.
   Widget _statusBlock(BuildContext context, Color tone) {
+    final small = TextStyle(fontSize: 13.5, color: Tone.muted(context));
+    final sentence = TextStyle(fontSize: 14, height: 1.35, color: Tone.muted(context));
+    final explanation = _explanation;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Icon(_icons[_state] ?? Icons.gps_not_fixed_rounded, size: 20, color: tone),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                _labels[_state] ?? _state,
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: tone),
-              ),
-            ),
-          ],
-        ),
-        if (_fixAt != null) ...[
-          const SizedBox(height: 10),
-          Text('Last GPS update', style: TextStyle(fontSize: 13.5, color: Tone.muted(context))),
+        if (_checking)
+          Text('Checking the tracker…', style: TextStyle(fontSize: 15, color: Tone.muted(context)))
+        else if (_noFixYet) ...[
+          Text('No GPS fix yet', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Tone.ink(context))),
+          const SizedBox(height: 4),
+          Text('The tracker is linked but has not sent a position yet.', style: sentence),
+        ] else if (_fixAt != null) ...[
+          Text('Last GPS update', style: small),
           const SizedBox(height: 2),
           Text(
             relativeTime(_fixAt),
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Tone.ink(context)),
           ),
         ],
+        if (explanation != null) ...[
+          const SizedBox(height: 6),
+          Text(explanation, style: sentence),
+        ],
         if (_checkedAt != null) ...[
           const SizedBox(height: 6),
-          // THE SECOND CLOCK. The age of the fix is above; this is the age of our
-          // knowledge. Conflating them is how a screen claims to be live while
-          // nothing has been fetched for ten minutes.
-          Text('Checked ${relativeTime(_checkedAt)}', style: TextStyle(fontSize: 13.5, color: Tone.muted(context))),
+          // THE SECOND CLOCK.
+          Text('Checked ${relativeTime(_checkedAt)}', style: small),
         ],
       ],
     );
@@ -942,34 +1197,154 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
   }
 
   Widget _actions(BuildContext context) {
-    return Row(
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: FilledButton.icon(
+        onPressed: _recentre,
+        icon: const Icon(Icons.my_location_rounded, size: 19),
+        label: const Text('Recentre', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+      ),
+    );
+  }
+
+  // ----------------------------------------------------------------- route --
+
+  /// The route, and how much of it there is.
+  ///
+  /// Three windows, each fetched once. The count and the distance are shown
+  /// because they are the honesty check on the line: 2,000 points and 400 km
+  /// under a "cut off" notice is a different fact from 40 points and 3 km.
+  Widget _routeBlock(BuildContext context, Color tone) {
+    final points = _trackPoints;
+    final hasRoute = points.length > 1;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: SizedBox(
-            height: 48,
-            child: FilledButton.icon(
-              onPressed: _recentre,
-              icon: const Icon(Icons.my_location_rounded, size: 19),
-              label: const Text('Recentre', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+        Row(
+          children: [
+            Text(
+              'ROUTE HISTORY',
+              style: TextStyle(fontSize: 12, letterSpacing: 0.8, fontWeight: FontWeight.w700, color: Tone.muted(context)),
             ),
-          ),
+            const Spacer(),
+            if (hasRoute && !_historyLoading && _historyError == null)
+              Text(
+                '${points.length} points · ${formatKm(routeDistanceKm(points))}',
+                style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: Tone.ink(context)),
+              ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: SizedBox(
-            height: 48,
-            child: OutlinedButton.icon(
-              onPressed: () {
-                setState(() => _loading = true);
-                _load(withHistory: true);
-              },
-              icon: const Icon(Icons.route_rounded, size: 19),
-              label: const Text('Route history', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-            ),
-          ),
-        ),
+        const SizedBox(height: 10),
+        _presetRow(context),
+        const SizedBox(height: 10),
+        _routeStatus(context, points, hasRoute),
       ],
     );
+  }
+
+  /// Today · 6h · 24h. A segmented control, 48pt tall so a thumb finds it.
+  Widget _presetRow(BuildContext context) {
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(color: Tone.panel(context), borderRadius: BorderRadius.circular(13)),
+      child: Row(
+        children: [
+          for (final preset in routePresets)
+            Expanded(
+              child: Semantics(
+                button: true,
+                selected: preset == _preset,
+                child: GestureDetector(
+                  onTap: () => _choosePreset(preset),
+                  behavior: HitTestBehavior.opaque,
+                  child: AnimatedContainer(
+                    duration: Motion.quick,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: preset == _preset ? Tone.accent(context) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      presetLabel(preset),
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: preset == _preset ? Colors.white : Tone.muted(context),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// One line under the presets, and it always says something: loading, failed
+  /// (with the way to try again), empty, cut off — or nothing at all when the
+  /// route is simply there, which the summary above already says.
+  Widget _routeStatus(BuildContext context, List<GeoPoint> points, bool hasRoute) {
+    final sentence = TextStyle(fontSize: 14, height: 1.35, color: Tone.muted(context));
+    if (_historyLoading) {
+      return Row(
+        children: [
+          SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(strokeWidth: 2, color: Tone.accent(context)),
+          ),
+          const SizedBox(width: 10),
+          Text('Loading route…', style: sentence),
+        ],
+      );
+    }
+    if (_historyError != null) {
+      return Row(
+        children: [
+          Icon(Icons.error_outline_rounded, size: 18, color: Tone.warning(context)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text("Couldn't load the route.", style: TextStyle(fontSize: 14, color: Tone.ink(context))),
+          ),
+          SizedBox(
+            height: 40,
+            child: TextButton(
+              onPressed: _reloadHistory,
+              child: const Text('Retry', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+            ),
+          ),
+        ],
+      );
+    }
+    if (!hasRoute) return Text('No route recorded in this range', style: sentence);
+    if (_historyTruncated) {
+      // N is what actually came back, never the server's ceiling: the number
+      // on the screen must be the number on the map.
+      return Container(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        decoration: BoxDecoration(
+          color: Tone.wash(context, Tone.warning(context)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.content_cut_rounded, size: 17, color: Tone.warning(context)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Showing the most recent ${points.length} recorded points — the route is cut off',
+                style: TextStyle(fontSize: 13.5, height: 1.35, color: Tone.ink(context)),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return const SizedBox.shrink();
   }
 
   Widget _tripBlock(BuildContext context) {
@@ -1054,7 +1429,10 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> {
             ),
           if (_fixAt != null) _detail(context, 'GPS fix time', _fixAt!.toLocal().toString().substring(0, 16)),
           if (_checkedAt != null) _detail(context, 'Last checked', _checkedAt!.toLocal().toString().substring(0, 16)),
-          if (track.length > 1) _detail(context, 'Route points', '${track.length} in the last 24 hours'),
+          if (track.length > 1) ...[
+            _detail(context, 'Route points', '${track.length} in ${hoursPhrase(_historyHours ?? 24)}'),
+            _detail(context, 'Route distance', formatKm(routeDistanceKm(_trackPoints))),
+          ],
           _detail(context, 'Map data', _base.attribution),
         ],
       ),

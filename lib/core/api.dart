@@ -411,8 +411,11 @@ class Api {
   Future<Map<String, dynamic>> vehicles() => _get('/vehicles');
 
   /// Where ONE vehicle is. Same shape as tripTracking, keyed on the vehicle.
-  Future<Map<String, dynamic>> vehicleTracking(String id, {bool history = false}) =>
-      _get('/vehicles/$id/tracking', {if (history) 'history': '1'});
+  ///
+  /// [hours] narrows the history window (1–24). It is sent only when asked for,
+  /// so a plain position poll stays exactly the request it always was.
+  Future<Map<String, dynamic>> vehicleTracking(String id, {bool history = false, int? hours}) =>
+      _get('/vehicles/$id/tracking', {if (history) 'history': '1', if (hours != null) 'hours': '$hours'});
 
   /// Where this trip's vehicle is.
   ///
@@ -420,8 +423,8 @@ class Api {
   /// walks to the tracker itself, so the phone never holds anything that could
   /// address another operator's vehicle. History is fetched only when the map is
   /// actually opened; the card polls the position alone.
-  Future<Map<String, dynamic>> tripTracking(String id, {bool history = false}) =>
-      _get('/trips/$id/tracking', {if (history) 'history': '1'});
+  Future<Map<String, dynamic>> tripTracking(String id, {bool history = false, int? hours}) =>
+      _get('/trips/$id/tracking', {if (history) 'history': '1', if (hours != null) 'hours': '$hours'});
 
   /// Set one field of a trip's setup. Returns the trip's FRESH readiness.
   Future<Map<String, dynamic>> updateTrip(String id, Map<String, dynamic> patch) => _patch('/trips/$id', patch);
