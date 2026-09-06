@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -193,6 +192,16 @@ class NavBar {
   static const clearance = gutter + height + 12;
 }
 
+/// The bundled family, declared in pubspec.yaml with all four of its weights.
+///
+/// One family, not one per weight: see the pubspec comment. This is what lets
+/// every existing `copyWith(fontWeight: …)` in the app keep working — 107 of
+/// them — instead of each needing to re-point the family by hand.
+const _family = 'Inter';
+
+/// Put the family on every role, leaving each style's own size and weight alone.
+TextTheme _inter(TextTheme base) => base.apply(fontFamily: _family);
+
 ThemeData buildTheme({required Brightness brightness}) {
   final dark = brightness == Brightness.dark;
   final scheme = ColorScheme.fromSeed(
@@ -237,7 +246,7 @@ ThemeData buildTheme({required Brightness brightness}) {
       scrolledUnderElevation: 0.5,
       centerTitle: false,
       // Outside interTextTheme's reach, so it names the family itself.
-      titleTextStyle: GoogleFonts.inter(color: onGround, fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: -0.3),
+      titleTextStyle: const TextStyle(fontFamily: _family).copyWith(color: onGround, fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: -0.3),
       systemOverlayStyle: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
     ),
     cardTheme: CardThemeData(
@@ -275,7 +284,7 @@ ThemeData buildTheme({required Brightness brightness}) {
      * Inter is drawn that way: set large and untracked it reads loose, set small
      * and untracked it reads tight.
      */
-    textTheme: GoogleFonts.interTextTheme(
+    textTheme: _inter(
       base.textTheme
           .apply(bodyColor: onGround, displayColor: onGround)
           .copyWith(
@@ -335,7 +344,7 @@ ThemeData buildTheme({required Brightness brightness}) {
       style: FilledButton.styleFrom(
         minimumSize: const Size.fromHeight(50),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        textStyle: GoogleFonts.inter(fontSize: 15.5, fontWeight: FontWeight.w600),
+        textStyle: const TextStyle(fontFamily: _family).copyWith(fontSize: 15.5, fontWeight: FontWeight.w600),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -344,7 +353,7 @@ ThemeData buildTheme({required Brightness brightness}) {
         foregroundColor: onGround,
         side: BorderSide(color: dark ? Brand.darkLine : Brand.line),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        textStyle: GoogleFonts.inter(fontSize: 14.5, fontWeight: FontWeight.w600),
+        textStyle: const TextStyle(fontFamily: _family).copyWith(fontSize: 14.5, fontWeight: FontWeight.w600),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
@@ -363,15 +372,15 @@ ThemeData buildTheme({required Brightness brightness}) {
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: dark ? Brand.darkAccent : Brand.accent, width: 1.6),
       ),
-      labelStyle: GoogleFonts.inter(color: muted, fontSize: 14),
-      hintStyle: GoogleFonts.inter(color: muted, fontSize: 15),
+      labelStyle: const TextStyle(fontFamily: _family).copyWith(color: muted, fontSize: 14),
+      hintStyle: const TextStyle(fontFamily: _family).copyWith(color: muted, fontSize: 15),
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: dark ? Brand.darkSurface : Brand.surface,
       indicatorColor: dark ? Brand.darkAccentWash : Brand.accentWash,
       height: 64,
       labelTextStyle: WidgetStatePropertyAll(
-        GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w600, color: muted),
+        const TextStyle(fontFamily: _family).copyWith(fontSize: 11.5, fontWeight: FontWeight.w600, color: muted),
       ),
       elevation: 0,
     ),
@@ -390,7 +399,7 @@ ThemeData buildTheme({required Brightness brightness}) {
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: dark ? Brand.darkPanel : Brand.ink,
-      contentTextStyle: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+      contentTextStyle: const TextStyle(fontFamily: _family).copyWith(color: Colors.white, fontSize: 14),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
   );
