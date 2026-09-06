@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_map/flutter_map.dart';
@@ -139,6 +140,8 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> with WidgetsBindi
   /// Set when the basemap will not load, so the grey is explained rather than mute.
   bool _tilesFailed = false;
   final _tileClient = _TimeoutTileClient();
+  /// The provider's own words for why, shown in debug builds only.
+  String? _tileError;
   _Basemap _base = _basemaps.first;
 
   /// The route window, and the state of the one request that fetches it.
@@ -491,13 +494,33 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> with WidgetsBindi
               Icon(Icons.layers_clear_outlined, size: 16, color: Tone.muted(context)),
               const SizedBox(width: 7),
               Flexible(
-                child: Text(
-                  // Naming the basemap matters: the three come from three
-                  // different hosts, so one being unreachable says nothing about
-                  // the others, and switching is the fix a person can actually apply.
-                  '${_base.label} imagery could not load — try another basemap above. '
-                  'The vehicle position is still current.',
-                  style: TextStyle(fontSize: 12, color: Tone.muted(context)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      // Naming the basemap matters: the three come from three
+                      // different hosts, so one being unreachable says nothing
+                      // about the others, and switching is the fix a person can
+                      // actually apply.
+                      '${_base.label} imagery could not load — try another basemap above. '
+                      'The vehicle position is still current.',
+                      style: TextStyle(fontSize: 12, color: Tone.muted(context)),
+                    ),
+                    // The provider's own reason, in debug builds only: a grey map
+                    // on a handset cannot be diagnosed from a desk, and this is
+                    // faster than attaching to the device's log stream.
+                    if (kDebugMode && _tileError != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          _tileError!,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 10.5, color: Tone.danger(context)),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ],
@@ -771,7 +794,12 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> with WidgetsBindi
           tileProvider: NetworkTileProvider(httpClient: _tileClient),
           errorTileCallback: (tile, error, _) {
             debugPrint('[tracking] ${_base.key} tile ${tile.coordinates} failed: $error');
-            if (mounted && !_tilesFailed) setState(() => _tilesFailed = true);
+            if (mounted && !_tilesFailed) {
+              setState(() {
+                _tilesFailed = true;
+                _tileError = error.toString();
+              });
+            }
           },
           /*
            * One tile arriving is proof the basemap works, and it clears the
