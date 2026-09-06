@@ -1110,7 +1110,7 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> with WidgetsBindi
             children: [
               ListView(
                 controller: scrollController,
-                padding: const EdgeInsets.fromLTRB(18, 10, 18, 20),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 children: [
                   Center(
                     child: Container(
@@ -1123,24 +1123,35 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> with WidgetsBindi
                       ),
                     ),
                   ),
+                  /*
+                   * No Recentre button here on purpose: the map carries one, in
+                   * the column of round controls on the right, always visible
+                   * whether the sheet is open or collapsed. A second copy in the
+                   * sheet was the most emphatic element on it, for an action the
+                   * map already offered a thumb's reach away.
+                   *
+                   * Tightened throughout: 16/18/14/22/22/16 of vertical air
+                   * between blocks that each carried a headline was most of the
+                   * sheet's height. The blocks below now rank by weight and size
+                   * rather than by the space around them, so the gaps only have
+                   * to separate, not to emphasise.
+                   */
                   _vehicleRow(context, tone),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                   _statusBlock(context, tone),
                   if (_position != null) ...[
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 12),
                     _metrics(context),
-                    const SizedBox(height: 14),
-                    _actions(context),
                   ],
                   if (_showsRoute) ...[
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 16),
                     _routeBlock(context, tone),
                   ],
                   if (widget.tripTitle != null && _vehicleId == null) ...[
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 16),
                     _tripBlock(context),
                   ],
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   _trackingDetails(context),
                 ],
               ),
@@ -1187,44 +1198,42 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> with WidgetsBindi
           if (switchable) _openFleetSheet(context);
         },
         child: Container(
-          constraints: const BoxConstraints(minHeight: 56),
-          padding: const EdgeInsets.symmetric(vertical: 5),
+          constraints: const BoxConstraints(minHeight: 44),
+          padding: const EdgeInsets.symmetric(vertical: 2),
           child: Row(
             children: [
               Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(color: Tone.wash(context, tone), borderRadius: BorderRadius.circular(13)),
-                child: Icon(Icons.directions_car_rounded, size: 24, color: tone),
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(color: Tone.wash(context, tone), borderRadius: BorderRadius.circular(10)),
+                child: Icon(Icons.directions_car_rounded, size: 19, color: tone),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // The app bar already carries this name at 18pt. Repeating it
+                    // at 19 made the sheet open with two competing titles, so here
+                    // it steps down to the role beneath: still the heading of the
+                    // sheet, no longer a second headline.
                     Text(
                       _title,
-                      style: TextStyle(
-                        fontSize: 19,
-                        fontWeight: FontWeight.w700,
-                        height: 1.15,
-                        letterSpacing: -0.2,
-                        color: Tone.ink(context),
-                      ),
+                      style: Theme.of(context).textTheme.titleMedium,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (plate != null) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 1),
                       // A plate is read letter by letter, so it is set like one:
                       // fixed-pitch where the platform has it, spaced where not.
                       Text(
                         plate,
                         style: TextStyle(
-                          fontSize: 13.5,
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          letterSpacing: 1.1,
+                          letterSpacing: 1.0,
                           fontFamily: 'Menlo',
                           fontFamilyFallback: const ['Roboto Mono', 'monospace'],
                           fontFeatures: const [FontFeature.tabularFigures()],
@@ -1275,80 +1284,73 @@ class _TrackingMapScreenState extends State<TrackingMapScreen> with WidgetsBindi
   /// The age of the fix is the big number; the age of our knowledge is the
   /// small line under it. Conflating them is how a screen claims to be live
   /// while nothing has been fetched for ten minutes.
+  /// Why the state is what it is — one line, and only when it adds something.
+  ///
+  /// This used to carry "Last GPS update", the age at 20pt bold, and "Checked
+  /// now" beneath it, while the facts row below repeated the same age and the
+  /// header repeated the same state. Three statements of one fact, each given
+  /// the weight of a headline, is what made the sheet tall without making it
+  /// informative. The age now appears once, in the facts row, at the size a
+  /// supporting fact deserves.
   Widget _statusBlock(BuildContext context, Color tone) {
-    final small = TextStyle(fontSize: 13.5, color: Tone.muted(context));
-    final sentence = TextStyle(fontSize: 14, height: 1.35, color: Tone.muted(context));
-    final explanation = _explanation;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (_checking)
-          Text('Checking the tracker…', style: TextStyle(fontSize: 15, color: Tone.muted(context)))
-        else if (_noFixYet) ...[
-          Text('No GPS fix yet', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Tone.ink(context))),
-          const SizedBox(height: 4),
-          Text('The tracker is linked but has not sent a position yet.', style: sentence),
-        ] else if (_fixAt != null) ...[
-          Text('Last GPS update', style: small),
+    final text = Theme.of(context).textTheme;
+    if (_checking) {
+      return Text('Checking the tracker…', style: text.bodySmall);
+    }
+    if (_noFixYet) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('No GPS fix yet', style: text.titleSmall),
           const SizedBox(height: 2),
-          Text(
-            relativeTime(_fixAt),
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Tone.ink(context)),
-          ),
+          Text('The tracker is linked but has not sent a position yet.', style: text.bodySmall),
         ],
-        if (explanation != null) ...[
-          const SizedBox(height: 6),
-          Text(explanation, style: sentence),
-        ],
-        if (_checkedAt != null) ...[
-          const SizedBox(height: 6),
-          // THE SECOND CLOCK.
-          Text('Checked ${relativeTime(_checkedAt)}', style: small),
-        ],
-      ],
-    );
+      );
+    }
+    final explanation = _explanation;
+    if (explanation == null) return const SizedBox.shrink();
+    return Text(explanation, style: text.bodySmall);
   }
 
+  /// The supporting facts, at the size of supporting facts.
+  ///
+  /// Two 21pt bold figures in filled panels read as the most important thing on
+  /// the screen, which they are not — the vehicle and its state are. Label above
+  /// value, small, no panel: the same information in roughly a third of the
+  /// height, and it stops competing with the header.
   Widget _metrics(BuildContext context) {
-    Widget tile(String value, String label) => Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
-        decoration: BoxDecoration(color: Tone.panel(context), borderRadius: BorderRadius.circular(14)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              value,
-              style: TextStyle(fontSize: 21, fontWeight: FontWeight.w700, color: Tone.ink(context)),
-            ),
-            const SizedBox(height: 3),
-            Text(label, style: TextStyle(fontSize: 13.5, color: Tone.muted(context))),
-          ],
-        ),
+    final text = Theme.of(context).textTheme;
+
+    Widget fact(String label, String value) => Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label.toUpperCase(), style: text.labelSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 1),
+          Text(
+            value,
+            // tnum so a ticking age does not shift the fact beside it.
+            style: text.titleSmall?.tnum,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
 
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Speed distinguishes driving from parked, which the state alone cannot.
-        tile(_speed == null ? '—' : (_speed! > 3 ? '$_speed km/h' : 'Parked'), 'Movement'),
-        const SizedBox(width: 12),
-        tile(relativeTime(_fixAt), 'GPS update'),
+        fact('Movement', _speed == null ? '—' : (_speed! > 3 ? '$_speed km/h' : 'Parked')),
+        fact('GPS update', relativeTime(_fixAt)),
+        if (_checkedAt != null) fact('Checked', relativeTime(_checkedAt)),
       ],
     );
   }
 
-  Widget _actions(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: FilledButton.icon(
-        onPressed: _recentre,
-        icon: const Icon(Icons.my_location_rounded, size: 19),
-        label: const Text('Recentre', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-      ),
-    );
-  }
+
 
   // ----------------------------------------------------------------- route --
 
