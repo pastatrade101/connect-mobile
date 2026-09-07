@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../core/api.dart';
+import '../core/quotation_rules.dart';
 import '../core/theme.dart';
 
 /// Quoting a marketplace enquiry from a phone.
@@ -16,9 +17,13 @@ import '../core/theme.dart';
 /// Adults and children are counted separately because a family is not four
 /// identical adults. The enquiry carries the split and the quotation stores it,
 /// so quoting two children at the adult rate was losing that distinction at
-/// exactly the moment it costs money. The child RATE is never invented: it
-/// starts at the adult price and stays there until the operator says otherwise,
-/// because no tour in this catalogue publishes a child price.
+/// exactly the moment it costs money.
+///
+/// The child RATE is never invented. It used to follow the adult box, because
+/// no tour in the catalogue published a child price and following was the least
+/// wrong guess available. Tours publish one now, so a rate that came from the
+/// tour's own price book is left alone: the operator raising the adult figure
+/// for one party must not silently drag the children's rate up with it.
 ///
 /// The one thing never guessed is the price itself. Where the tour has no
 /// published figure the field opens empty and the send button stays disabled,
@@ -55,6 +60,22 @@ class _QuotationSheetState extends State<QuotationSheet> {
   /// Until the operator touches it, the child rate follows the adult one. A
   /// child price that silently stopped tracking would quote yesterday's number.
   bool _childPriceEdited = false;
+
+  /// The child box was filled from the tour's own price book.
+  ///
+  /// That is a published figure, not a guess, so the adult box must stop
+  /// mirroring into it — otherwise editing the adult rate overwrites the very
+  /// child rate this screen exists to honour, and the panel above goes on
+  /// displaying the number that was just destroyed.
+  bool _childFromPricing = false;
+
+  /// The party the recommendation was calculated for.
+  ///
+  /// The band is a function of party size, and the operator can change the
+  /// party after the sheet opens. Kept so the panel can stop asserting a band
+  /// the numbers on screen no longer support.
+  int _recAdults = 0;
+  int _recChildren = 0;
 
   static final _money = NumberFormat('#,##0.##', 'en_US');
 
@@ -105,9 +126,12 @@ class _QuotationSheetState extends State<QuotationSheet> {
         // asked rather than handed the adult price to send by accident.
         final childMissing = rec?['childRateMissing'] == true;
         final recChild = double.tryParse((rec?['childPrice'] ?? '').toString());
-        _childPrice.text = (!childMissing && recChild != null && recChild > 0) ? _money.format(recChild) : '';
+        _childFromPricing = !childMissing && recChild != null && recChild > 0;
+        _childPrice.text = _childFromPricing ? _money.format(recChild!) : '';
         _adults = (enquiry['adults'] as int?) ?? 1;
         _children = (enquiry['children'] as int?) ?? 0;
+        _recAdults = _adults;
+        _recChildren = _children;
       });
     } catch (e) {
       if (mounted) setState(() => _error = _errorText(e));
@@ -147,24 +171,35 @@ class _QuotationSheetState extends State<QuotationSheet> {
     return (title == null || title.isEmpty) ? null : title;
   }
 
-  /// What the operator typed, in the shape the server will accept.
-  ///
-  /// People type "1,200" and "1 200" on a phone; the server takes digits and at
-  /// most two decimals. Normalising here means a thousands separator is a
-  /// formatting habit rather than a rejected quotation.
-  static String _normalise(String raw) {
-    final cleaned = raw.replaceAll(RegExp(r'[,\s]'), '').trim();
-    final value = double.tryParse(cleaned);
-    return value == null ? '' : value.toStringAsFixed(2);
-  }
-
-  String get _adultRate => _normalise(_adultPrice.text);
-  String get _childRate => _normalise(_childPrice.text);
+  String get _adultRate => normaliseAmount(_adultPrice.text);
+  String get _childRate => normaliseAmount(_childPrice.text);
 
   double get _adultUnit => double.tryParse(_adultRate) ?? 0;
   double get _childUnit => double.tryParse(_childRate) ?? 0;
 
   int get _travellers => _adults + _children;
+
+  /// True once the party on screen is no longer the one that was priced.
+  ///
+  /// `recommended` is computed server-side from the ENQUIRY's adults and
+  /// children, so the band it names stops being true the moment the operator
+  /// corrects the numbers. Saying "3-4 travellers" directly above a counter
+  /// reading 6 is worse than saying nothing.
+  bool get _recommendationIsStale => recommendationIsStale(
+    adults: _adults,
+    children: _children,
+    forAdults: _recAdults,
+    forChildren: _recChildren,
+  );
+
+  /// Children are being quoted and nobody has said what they pay.
+  ///
+  /// A deliberate free child is typed as 0 and passes this; an EMPTY box does
+  /// not. The distinction matters because the empty box used to be sent as
+  /// "0.00", which is a free holiday nobody chose to give away — and it
+  /// satisfies the server's own guard, so nothing downstream catches it.
+  bool get _childRateNeeded =>
+      childRateNeeded(children: _children, perGroup: _perGroup, childRate: _childRate);
 
   /// Per group, the published figure IS the total. Per person, adults and
   /// children are priced on their own rates and added.
@@ -173,8 +208,8 @@ class _QuotationSheetState extends State<QuotationSheet> {
   String get _lineTitle => _tourTitle ?? _title.text.trim();
 
   // A child can genuinely be free, so the bar is a positive TOTAL rather than a
-  // positive price on every line.
-  bool get _ready => _lineTitle.isNotEmpty && _travellers > 0 && _total > 0;
+  // positive price on every line — but free has to be TYPED, not left blank.
+  bool get _ready => _lineTitle.isNotEmpty && _travellers > 0 && _total > 0 && !_childRateNeeded;
 
   /* ------------------------------------------------------------- writing -- */
 
@@ -211,8 +246,16 @@ class _QuotationSheetState extends State<QuotationSheet> {
     'adults': _adults,
     'children': _children,
     'adultPrice': _adultRate,
-    if (_children > 0) 'childPrice': _childRate.isEmpty ? '0.00' : _childRate,
+    // Never a substituted zero. _ready refuses to send while this is blank, so
+    // by the time this runs the operator has named the figure — the one
+    // exception being a whole-group price, where children are inside the group
+    // total and the field is not shown at all.
+    if (_childPriceToSend != null) 'childPrice': _childPriceToSend!,
   };
+
+  /// The child figure the server should receive, or null when there is none.
+  String? get _childPriceToSend =>
+      childPriceForPayload(children: _children, perGroup: _perGroup, childRate: _childRate);
 
   Future<void> _submit({required bool send}) async {
     if (!_ready || _busy) return;
@@ -280,6 +323,17 @@ class _QuotationSheetState extends State<QuotationSheet> {
   static String _errorText(Object e) => e is ApiException ? e.message : 'Something went wrong. Try again.';
 
   String _amount(double value) => '$_currency ${_money.format(value)}';
+
+  /// A money value straight off the wire, printed like every other figure here.
+  ///
+  /// These arrive as NUMERIC(14,2) strings — "3930.00", and "1250000.00" on a
+  /// shilling tenant. Interpolated raw they read as an undelimited run of digits
+  /// sitting directly above the same amount rendered as "TZS 1,250,000", which
+  /// makes the operator check one against the other by counting.
+  String _wireAmount(Object? raw) {
+    final value = double.tryParse((raw ?? '').toString());
+    return value == null ? '\u2014' : _amount(value);
+  }
 
   String _people(int n, String one, String many) => '$n ${n == 1 ? one : many}';
 
@@ -519,26 +573,36 @@ class _QuotationSheetState extends State<QuotationSheet> {
                 runSpacing: 2,
                 children: [
                   Text(
-                    'Tour pricing  $_currency ${_recommended!['adultPrice']} adult',
+                    'Tour pricing  ${_wireAmount(_recommended!['adultPrice'])} adult',
                     style: text.bodySmall?.copyWith(color: scheme.onSurface, fontWeight: FontWeight.w600),
                   ),
                   if (!_childRateMissing && _recommended!['childPrice'] != null)
                     Text(
-                      '$_currency ${_recommended!['childPrice']} child',
+                      '${_wireAmount(_recommended!['childPrice'])} child',
                       style: text.bodySmall?.copyWith(color: scheme.onSurface, fontWeight: FontWeight.w600),
                     ),
                 ],
               ),
               const SizedBox(height: 2),
               Text(
-                (_recommended!['applied'] ?? '').toString(),
-                style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+                // The band, only while it is still true of the party on screen.
+                _recommendationIsStale
+                    ? 'Rate for the enquiry\u2019s ${_people(_recAdults + _recChildren, 'traveller', 'travellers')} \u2014 you have changed the party, so check it.'
+                    : (_recommended!['applied'] ?? '').toString(),
+                style: text.labelSmall?.copyWith(
+                  color: _recommendationIsStale ? Tone.warning(context) : scheme.onSurfaceVariant,
+                ),
               ),
-              if (_childRateMissing) ...[
+              if (_childRateNeeded) ...[
                 const SizedBox(height: 6),
                 Text(
-                  'Child price required — this tour does not publish one, so enter what children pay.',
-                  style: text.bodySmall?.copyWith(color: Brand.warning, fontWeight: FontWeight.w600),
+                  _childRateMissing
+                      ? 'Child price required \u2014 this tour does not publish one, so enter what children pay.'
+                      : 'Child price required \u2014 enter what children pay, or 0 if they travel free.',
+                  // Tone, not Brand: the raw constant is the light-mode value and
+                  // goes nearly invisible on a dark panel, which is where the one
+                  // sentence explaining a disabled Send button must not go.
+                  style: text.bodySmall?.copyWith(color: Tone.warning(context), fontWeight: FontWeight.w600),
                 ),
               ],
             ],
@@ -556,8 +620,16 @@ class _QuotationSheetState extends State<QuotationSheet> {
               text: text,
               scheme: scheme,
               onChanged: (value) => setState(() {
-                // The child rate follows the adult one until it is set apart.
-                if (!_childPriceEdited) _childPrice.text = value;
+                // The child rate follows the adult one only while nothing better
+                // is known. A rate that came from the tour's price book IS
+                // something better, and mirroring over it quotes the child at the
+                // adult rate — the exact fault this screen was changed to fix.
+                if (childFollowsAdult(
+                  childPriceEdited: _childPriceEdited,
+                  childFromPricing: _childFromPricing,
+                )) {
+                  _childPrice.text = value;
+                }
               }),
             ),
           ),
