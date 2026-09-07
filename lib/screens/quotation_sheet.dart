@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../core/api.dart';
+import '../core/theme.dart';
 
 /// Quoting a marketplace enquiry from a phone.
 ///
@@ -83,12 +84,28 @@ class _QuotationSheetState extends State<QuotationSheet> {
       setState(() {
         _draft = draft;
         _title.text = (first?['description'] ?? '').toString();
-        // A published 0 is "no price set", not a free trip — leave it blank so
-        // the operator names the number instead of confirming a zero.
+        /*
+         * Open at what the tour's own pricing says for THIS party and date.
+         *
+         * Both boxes used to open at the single published figure, so a child
+         * opened at the adult rate and stayed there unless the operator noticed.
+         * The server resolves the season, the group-size band and the child rate
+         * and sends them as `recommended`; the operator still overrides either
+         * box, and doing so changes this quotation only.
+         *
+         * A published 0 is "no price set", not a free trip — blank either way,
+         * so the operator names the number instead of confirming a zero.
+         */
+        final rec = draft['recommended'] as Map<String, dynamic>?;
         final published = double.tryParse((first?['unitPrice'] ?? '').toString());
-        final opening = (published == null || published <= 0) ? '' : _money.format(published);
-        _adultPrice.text = opening;
-        _childPrice.text = opening;
+        final fallback = (published == null || published <= 0) ? '' : _money.format(published);
+        final recAdult = double.tryParse((rec?['adultPrice'] ?? '').toString());
+        _adultPrice.text = recAdult != null && recAdult > 0 ? _money.format(recAdult) : fallback;
+        // Left EMPTY when the tour publishes no child rate, so the operator is
+        // asked rather than handed the adult price to send by accident.
+        final childMissing = rec?['childRateMissing'] == true;
+        final recChild = double.tryParse((rec?['childPrice'] ?? '').toString());
+        _childPrice.text = (!childMissing && recChild != null && recChild > 0) ? _money.format(recChild) : '';
         _adults = (enquiry['adults'] as int?) ?? 1;
         _children = (enquiry['children'] as int?) ?? 0;
       });
@@ -100,6 +117,12 @@ class _QuotationSheetState extends State<QuotationSheet> {
   /* ------------------------------------------------------------- reading -- */
 
   String get _currency => (_draft?['currency'] ?? 'USD').toString();
+
+  /// What the tour's pricing says for this party, and why. Null when unpriced.
+  Map<String, dynamic>? get _recommended => _draft?['recommended'] as Map<String, dynamic>?;
+
+  /// True when the party has children and the tour publishes no child rate.
+  bool get _childRateMissing => _recommended?['childRateMissing'] == true;
 
   Map<String, dynamic>? get _firstItem {
     final items = (_draft?['items'] as List?) ?? const [];
@@ -247,7 +270,11 @@ class _QuotationSheetState extends State<QuotationSheet> {
   /// while "McDonald" and "de Souza" survive untouched.
   static String _properName(String raw) => raw
       .split(' ')
-      .map((word) => word.isEmpty || word != word.toLowerCase() ? word : '${word[0].toUpperCase()}${word.substring(1)}')
+      .map(
+        (word) => word.isEmpty || word != word.toLowerCase()
+            ? word
+            : '${word[0].toUpperCase()}${word.substring(1)}',
+      )
       .join(' ');
 
   static String _errorText(Object e) => e is ApiException ? e.message : 'Something went wrong. Try again.';
@@ -309,7 +336,11 @@ class _QuotationSheetState extends State<QuotationSheet> {
     padding: const EdgeInsets.only(bottom: 10),
     child: Text(
       label.toUpperCase(),
-      style: text.labelSmall?.copyWith(letterSpacing: 0.9, fontWeight: FontWeight.w700, color: scheme.onSurfaceVariant),
+      style: text.labelSmall?.copyWith(
+        letterSpacing: 0.9,
+        fontWeight: FontWeight.w700,
+        color: scheme.onSurfaceVariant,
+      ),
     ),
   );
 
@@ -394,7 +425,11 @@ class _QuotationSheetState extends State<QuotationSheet> {
       ];
     }
     if (_draft == null) {
-      return [const SizedBox(height: 60), const Center(child: CircularProgressIndicator()), const SizedBox(height: 60)];
+      return [
+        const SizedBox(height: 60),
+        const Center(child: CircularProgressIndicator()),
+        const SizedBox(height: 60),
+      ];
     }
 
     final enquiry = (_draft!['enquiry'] as Map<String, dynamic>?) ?? const {};
@@ -434,7 +469,14 @@ class _QuotationSheetState extends State<QuotationSheet> {
       // means.
       _sectionLabel(text, scheme, 'Travellers'),
       _counterRow(text: text, scheme: scheme, label: 'Adults', value: _adults, min: 0, onChange: _setAdults),
-      _counterRow(text: text, scheme: scheme, label: 'Children', value: _children, min: 0, onChange: _setChildren),
+      _counterRow(
+        text: text,
+        scheme: scheme,
+        label: 'Children',
+        value: _children,
+        min: 0,
+        onChange: _setChildren,
+      ),
 
       _rule(scheme),
 
@@ -455,6 +497,54 @@ class _QuotationSheetState extends State<QuotationSheet> {
           ),
         ],
       ),
+      /*
+       * What the tour's pricing says, and why.
+       *
+       * Stated apart from the boxes because the two answer different questions:
+       * this is the recommendation, those are the offer being made to THIS
+       * traveller. An operator overriding a rate here must not feel they are
+       * editing the tour, because they are not.
+       */
+      if (_recommended != null) ...[
+        const SizedBox(height: 10),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(color: Tone.panel(context), borderRadius: BorderRadius.circular(10)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                spacing: 14,
+                runSpacing: 2,
+                children: [
+                  Text(
+                    'Tour pricing  $_currency ${_recommended!['adultPrice']} adult',
+                    style: text.bodySmall?.copyWith(color: scheme.onSurface, fontWeight: FontWeight.w600),
+                  ),
+                  if (!_childRateMissing && _recommended!['childPrice'] != null)
+                    Text(
+                      '$_currency ${_recommended!['childPrice']} child',
+                      style: text.bodySmall?.copyWith(color: scheme.onSurface, fontWeight: FontWeight.w600),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                (_recommended!['applied'] ?? '').toString(),
+                style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+              if (_childRateMissing) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'Child price required — this tour does not publish one, so enter what children pay.',
+                  style: text.bodySmall?.copyWith(color: Brand.warning, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
       const SizedBox(height: 12),
       Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -505,7 +595,11 @@ class _QuotationSheetState extends State<QuotationSheet> {
           children: [
             Text(
               'TOTAL',
-              style: text.labelSmall?.copyWith(letterSpacing: 0.9, fontWeight: FontWeight.w700, color: scheme.primary),
+              style: text.labelSmall?.copyWith(
+                letterSpacing: 0.9,
+                fontWeight: FontWeight.w700,
+                color: scheme.primary,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
@@ -523,7 +617,10 @@ class _QuotationSheetState extends State<QuotationSheet> {
       const SizedBox(height: 20),
 
       // ── message ───────────────────────────────────────────────────────────
-      Text('Message to traveller (optional)', style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+      Text(
+        'Message to traveller (optional)',
+        style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+      ),
       const SizedBox(height: 6),
       TextField(
         controller: _message,
@@ -608,10 +705,15 @@ class _QuotationSheetState extends State<QuotationSheet> {
       const SizedBox(height: 12),
       Icon(sent ? Icons.check_circle_rounded : Icons.save_rounded, size: 44, color: scheme.primary),
       const SizedBox(height: 12),
-      Text(sent ? 'Quotation sent' : 'Quotation saved', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+      Text(
+        sent ? 'Quotation sent' : 'Quotation saved',
+        style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+      ),
       const SizedBox(height: 4),
       Text(
-        sent ? '$reference has gone to ${_properName(widget.customerName)}.' : '$reference is saved as a draft.',
+        sent
+            ? '$reference has gone to ${_properName(widget.customerName)}.'
+            : '$reference is saved as a draft.',
         style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
       ),
       // Saved but not delivered is its own outcome, and saying "sent" here would
@@ -636,7 +738,10 @@ class _QuotationSheetState extends State<QuotationSheet> {
           ? SizedBox(
               height: 50,
               width: double.infinity,
-              child: FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Done')),
+              child: FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Done'),
+              ),
             )
           : Row(
               children: [
@@ -682,7 +787,9 @@ class _StepButton extends StatelessWidget {
       button: true,
       label: semantic,
       child: Material(
-        color: enabled ? scheme.surfaceContainerHighest : scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        color: enabled
+            ? scheme.surfaceContainerHighest
+            : scheme.surfaceContainerHighest.withValues(alpha: 0.4),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.6)),
